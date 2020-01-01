@@ -145,15 +145,15 @@ function Buffer:WriteString(Value)
 end
 
 function Buffer:ReadString()
-	local Result = ""
+	local result = ""
 	for I = 1, self.Size do
-		local B = self:ReadUInt8()
-		if B == 0 then
+		local b = self:ReadUInt8()
+		if b == 0 then
 			break
 		end
-		Result = Result .. string.char(B)
+		result = result .. string.char(b)
 	end
-	return Result
+	return result
 end
 
 -- half life
@@ -168,4 +168,26 @@ end
 
 function Buffer:ReadHiresAngle()
 	return self:ReadInt16() * (360.0 / 65536.0)
+end
+
+-- buf
+
+function Buffer:ReadBuf(Size)
+	self:EnsureSpace(Size)
+	local result = ""
+	for I = 1, Size do
+		local B = self:ReadUInt8()
+		result = result .. string.char(B)
+	end
+	return result
+end
+
+-- other
+
+function Buffer:ReadVec3()
+	local result = Vec3.New()
+	result.X = self:ReadFloat()
+	result.Y = self:ReadFloat()
+	result.Z = self:ReadFloat()
+	return result
 end

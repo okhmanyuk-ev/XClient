@@ -24,6 +24,7 @@ require "gmsg"
 require "vec3"
 require "utils"
 require "move"
+require "nav"
 
 local GameMessageCallbacks = {}
 local ThinkTime = 0
@@ -66,6 +67,9 @@ end
 
 function InitializeGame()
 	Log "game initialized"
+
+	local nav = NAV.New("navigations/cs_assault.nav")
+
 	Console.Execute("delay 1 '" .. 'cmd "jointeam 2"' .. "'")
 	Console.Execute("delay 2 '" .. 'cmd "joinclass 6"' .. "'")
 end
