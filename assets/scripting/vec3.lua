@@ -32,7 +32,11 @@ function Vec3.__mul(A, B) -- maybe wrong
 end
 
 function Vec3.__div(A, B)
-	return Vec3.New(A.X / B.X, A.Y / B.Y, A.Z / B.Z)
+	if type(B) == "number" then
+		return Vec3.New(A.X / B, A.Y / B, A.Z / B)
+	else
+		return Vec3.New(A.X / B.X, A.Y / B.Y, A.Z / B.Z)
+	end
 end
 
 function Vec3.__unm(A)

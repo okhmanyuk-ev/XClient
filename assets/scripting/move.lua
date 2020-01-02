@@ -27,11 +27,11 @@ end
 
 function TestMove()
 	local player = FindPlayerEntity()
-	
+
 	if player == nil then
 		return
 	end
-	
+
 	local origin = Vec3.New(player.origin)
 
 	LookAt(origin)
@@ -53,6 +53,25 @@ function TestMove()
 	end
 end
 
+function TestNavMove()
+	local area = nil
+	for i = 0, #nav.Areas - 1 do
+		if nav.Areas[i].Index == 15 then
+			area = nav.Areas[i]
+			break
+		end
+	end
+
+	if area == nil then
+		return
+	end
+
+	local dest = (area.Extent.Hi + area.Extent.Lo) / 2.0
+
+	MoveTo(dest)
+end
+
 function Move()
-	TestMove()
+	--TestMove()
+	TestNavMove()
 end

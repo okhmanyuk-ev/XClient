@@ -305,7 +305,6 @@ void main(int argc, char* argv[])
 	bool shutdown = false;
 	consoleCommands.setQuitCallback([&shutdown] { shutdown = true; });
 
-
 	while (!shutdown)
 	{
 		frameSystem.frame();

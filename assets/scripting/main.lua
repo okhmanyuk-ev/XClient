@@ -4,7 +4,7 @@
 	Console.WriteLine(s, col)
 	Console.RegisterCommand(name, <description>, <args>, callback)
 	Console.RegisterCVar(name, <description>, <args>, <optional_args>, getter, <setter>)
-	
+
 	Client.SendCommand(s)
 	Client.GetIndex() -> int
 	Client.GetMap() -> string
@@ -35,7 +35,7 @@ function Initialize()
 	InitializeGmsgCallbacks(GameMessageCallbacks)
 	math.randomseed(os.clock())
 	GenerateCertificate()
-	
+
 	Console.Execute("sys_framerate 60")
 	Console.Execute("connect 127.0.0.1")
 end
@@ -76,11 +76,12 @@ function Think()
 	local now = os.clock() * 1000.0
 	local thinkDelta = now - ThinkTime
 	ThinkTime = now
-	
+
 	UserCmd.MSec = thinkDelta
 	UserCmd.ForwardMove = 0
 	UserCmd.SideMove = 0
 	UserCmd.Buttons = 0
+	UserCmd.ViewAngles = { 0, 0, 0 }
 
 	Move()
 
@@ -96,8 +97,8 @@ function MoveTo(Target)
 	local speed = 250.0;
 	local angles = VectorAngles(Target - Vec3.New(Client.GetOrigin()))
 	local dir = UserCmd.ViewAngles[2] - angles.Y
-	UserCmd.ForwardMove = math.cos(math.deg(dir)) * speed
-	UserCmd.SideMove = math.sin(math.deg(dir)) * speed
+	UserCmd.ForwardMove = math.cos(math.rad(dir)) * speed
+	UserCmd.SideMove = math.sin(math.rad(dir)) * speed
 end
 
 function MoveFrom(Target)
