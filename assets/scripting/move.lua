@@ -1,15 +1,21 @@
 require "utils"
 
 local visible = false
+local nav = nil
+
+function InitNav()
+	local map = Client.GetMap():match(".+/(.*)$")
+	map = map:match("(.+)%..+")
+	nav = NAV.New("navigations/" .. map .. ".nav")
+	Log("nav loaded")
+end
 
 function FindPlayerEntity(Expression) -- Expression(I) -> bool
 	for I = 0, Client.GetEntitiesCount() - 1 do
-		if (I ~= Client.GetIndex() + 1) then
+		if I ~= Client.GetIndex() + 1 then
 			if Client.IsEntityActive(I) then
 				if Client.IsPlayerIndex(I) then
-					if not Expression then
-						return Client.GetEntity(I)
-					elseif Expression(I) then
+					if not Expression or Expression(I) then
 						return Client.GetEntity(I)
 					end
 				end
@@ -19,7 +25,7 @@ function FindPlayerEntity(Expression) -- Expression(I) -> bool
 	return nil
 end
 
-function Move()
+function TestMove()
 	local player = FindPlayerEntity()
 	
 	if player == nil then
@@ -45,4 +51,8 @@ function Move()
 	elseif distance < 150 then
 		MoveFrom(origin)
 	end
+end
+
+function Move()
+	TestMove()
 end

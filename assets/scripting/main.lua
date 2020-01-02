@@ -52,7 +52,7 @@ function ReadGameMessage(Name, Memory)
 			return
 		end
 	end
-	Log(Name)
+	Log(Name .. " (" .. #Memory .. " bytes)")
 end
 
 function IsResourceRequired(Name)
@@ -67,9 +67,7 @@ end
 
 function InitializeGame()
 	Log "game initialized"
-
-	local nav = NAV.New("navigations/cs_assault.nav")
-
+	InitNav()
 	Console.Execute("delay 1 '" .. 'cmd "jointeam 2"' .. "'")
 	Console.Execute("delay 2 '" .. 'cmd "joinclass 6"' .. "'")
 end
