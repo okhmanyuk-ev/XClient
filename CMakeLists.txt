@@ -23,8 +23,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY $
 
 # sky
 
-include(sky/CMakeLists.txt)
+add_subdirectory(sky)
+target_link_libraries(${PROJECT_NAME} sky)
+copy_required_libs(${PROJECT_NAME})
 
 # hl
 
-include(hl/CMakeLists.txt)
+add_subdirectory(hl)
+target_link_libraries(${PROJECT_NAME} hl)

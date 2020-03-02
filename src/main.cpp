@@ -275,21 +275,12 @@ void main(int argc, char* argv[])
 {
 	Core::Engine engine;
 
-	Common::FrameSystem frameSystem;
-	engine.setFrame(&frameSystem);
+	ENGINE->addSystem<Common::FrameSystem>(std::make_shared<Common::FrameSystem>());
+	ENGINE->addSystem<Common::EventSystem>(std::make_shared<Common::EventSystem>());
+	ENGINE->addSystem<Console::Device>(std::make_shared<Common::NativeConsoleDevice>());
+	ENGINE->addSystem<Console::System>(std::make_shared<Console::System>());
+	ENGINE->addSystem<Network::System>(std::make_shared<Network::System>());
 
-	Common::EventSystem eventSystem;
-	engine.setEvent(&eventSystem);
-
-	Common::NativeConsoleDevice consoleDevice;
-	engine.setConsoleDevice(&consoleDevice);
-
-	Console::System consoleSystem;
-	engine.setConsole(&consoleSystem);
-
-	Network::System networkSystem;
-	engine.setNetwork(&networkSystem);
-	
 	Common::ConsoleCommands consoleCommands;
 	HL::PlayableClient client;
 	Common::FramerateCounter framerateCounter;
@@ -298,7 +289,7 @@ void main(int argc, char* argv[])
 	Common::Timer timer;
 	timer.setInterval(Clock::FromSeconds(1.0f));
 	timer.setCallback([&] {
-		consoleDevice.setTitle("XClient - " + std::to_string(framerateCounter.getFramerate()) + " fps, " + 
+		NATIVE_CONSOLE_DEVICE->setTitle("XClient - " + std::to_string(framerateCounter.getFramerate()) + " fps, " +
 			Common::SizeConverter::ToString(scripting.getMemoryUsed()) + " mem");
 	});
 
@@ -307,6 +298,6 @@ void main(int argc, char* argv[])
 
 	while (!shutdown)
 	{
-		frameSystem.frame();
+		FRAME->frame();
 	}
 }
