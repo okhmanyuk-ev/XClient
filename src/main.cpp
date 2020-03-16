@@ -306,7 +306,7 @@ void main(int argc, char* argv[])
 class XClient
 {
 public:
-	using ConsoleWriteCallback = void(*)(const char*);
+	using ConsoleWriteCallback = void(*)(const char*, int color);
 	using ConsoleClearCallback = void(*)();
 	using ThinkCallback = void(*)(HL::Protocol::UserCmd*);
 
@@ -329,14 +329,14 @@ public:
 		EMBEDDED_CONSOLE_DEVICE->setWriteCallback([this](const auto& s, auto col) {
 			if (mConsoleWriteCallback)
 			{
-				mConsoleWriteCallback(s.c_str());
+				mConsoleWriteCallback(s.c_str(), (int)col);
 			}
 		});
 
 		EMBEDDED_CONSOLE_DEVICE->setWriteLineCallback([this](const auto& s, auto col) {
 			if (mConsoleWriteLineCallback)
 			{
-				mConsoleWriteLineCallback(s.c_str());
+				mConsoleWriteLineCallback(s.c_str(), (int)col);
 			}
 		});
 
