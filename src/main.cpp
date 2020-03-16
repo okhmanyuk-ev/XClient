@@ -309,6 +309,7 @@ public:
 	using ConsoleWriteCallback = void(*)(const char*, int color);
 	using ConsoleClearCallback = void(*)();
 	using ThinkCallback = void(*)(HL::Protocol::UserCmd*);
+	using ReadGameMessageCallback = void(*)(const char*, void* data, size_t size);
 
 public:
 	XClient()
@@ -324,6 +325,13 @@ public:
 
 		mConsoleCommands->setQuitCallback([this] {
 			mRunning = false;
+		});
+		
+		mClient->setReadGameMessageCallback([this](const std::string& name, void* memory, size_t size) {
+			if (mReadGameMessageCallback)
+			{
+				mReadGameMessageCallback(name.c_str(), memory, size);
+			}
 		});
 
 		EMBEDDED_CONSOLE_DEVICE->setWriteCallback([this](const auto& s, auto col) {
@@ -370,6 +378,7 @@ public:
 	ConsoleWriteCallback mConsoleWriteLineCallback = nullptr;
 	ConsoleClearCallback mConsoleClearCallback = nullptr;
 	ThinkCallback mThinkCallback = nullptr;
+	ReadGameMessageCallback mReadGameMessageCallback = nullptr;
 };
 
 #define EXPORT extern "C" __declspec(dllexport) 
@@ -414,6 +423,11 @@ EXPORT void xcSetConsoleClearCallback(XClient* client, XClient::ConsoleClearCall
 EXPORT void xcSetThinkCallback(XClient* client, XClient::ThinkCallback value)
 {
 	client->mThinkCallback = value;
+}
+
+EXPORT void xcSetReadGameMessageCallback(XClient* client, XClient::ReadGameMessageCallback value)
+{
+	client->mReadGameMessageCallback = value;
 }
 
 EXPORT void xcSetCertificate(XClient* client, void* data, size_t size)
