@@ -416,6 +416,12 @@ EXPORT void xcSetThinkCallback(XClient* client, XClient::ThinkCallback value)
 	client->mThinkCallback = value;
 }
 
+EXPORT void xcSetCertificate(XClient* client, void* data, size_t size)
+{
+	auto value = std::string((const char*)data, size);
+	client->mClient->setCertificate({ value.begin(), value.end() });
+}
+
 EXPORT void xcExecuteCommand(XClient* client, const char* str)
 {
 	client->ensureContext();
