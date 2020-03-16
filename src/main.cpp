@@ -313,32 +313,41 @@ public:
 public:
 	XClient()
 	{
-		mConsoleCommands.setQuitCallback([this] {
+		ENGINE->addSystem<Common::FrameSystem>(std::make_shared<Common::FrameSystem>());
+		ENGINE->addSystem<Common::EventSystem>(std::make_shared<Common::EventSystem>());
+		ENGINE->addSystem<Console::Device>(std::make_shared<Common::EmbeddedConsoleDevice>());
+		ENGINE->addSystem<Console::System>(std::make_shared<Console::System>());
+		ENGINE->addSystem<Network::System>(std::make_shared<Network::System>());
+
+		mConsoleCommands = std::make_shared<Common::ConsoleCommands>();
+		mClient = std::make_shared<HL::PlayableClient>();
+
+		mConsoleCommands->setQuitCallback([this] {
 			mRunning = false;
 		});
 
-		mConsoleDevice.setWriteCallback([this](const auto& s, auto col) {
+		EMBEDDED_CONSOLE_DEVICE->setWriteCallback([this](const auto& s, auto col) {
 			if (mConsoleWriteCallback)
 			{
 				mConsoleWriteCallback(s.c_str());
 			}
 		});
 
-		mConsoleDevice.setWriteLineCallback([this](const auto& s, auto col) {
+		EMBEDDED_CONSOLE_DEVICE->setWriteLineCallback([this](const auto& s, auto col) {
 			if (mConsoleWriteLineCallback)
 			{
 				mConsoleWriteLineCallback(s.c_str());
 			}
 		});
 
-		mConsoleDevice.setClearCallback([this] {
+		EMBEDDED_CONSOLE_DEVICE->setClearCallback([this] {
 			if (mConsoleClearCallback)
 			{
 				mConsoleClearCallback();
 			}
 		});
 
-		mClient.setThinkCallback([this](auto& cmd) {
+		mClient->setThinkCallback([this](auto& cmd) {
 			if (mThinkCallback)
 			{
 				mThinkCallback(&cmd);
@@ -353,13 +362,8 @@ public:
 
 public:
 	Core::Engine mEngine;
-	Common::EventSystem mEventSystem;
-	Common::FrameSystem mFrameSystem;
-	Common::EmbeddedConsoleDevice mConsoleDevice;
-	Console::System mConsoleSystem;
-	Common::ConsoleCommands mConsoleCommands;
-	Network::System mNetworkSystem;
-	HL::PlayableClient mClient;
+	std::shared_ptr<Common::ConsoleCommands> mConsoleCommands;
+	std::shared_ptr<HL::PlayableClient> mClient;
 	bool mRunning = true;
 
 	ConsoleWriteCallback mConsoleWriteCallback = nullptr;
@@ -384,7 +388,7 @@ EXPORT void xcDestroy(XClient* client)
 EXPORT void xcFrame(XClient* client)
 {
 	client->ensureContext();
-	client->mFrameSystem.frame();
+	FRAME->frame();
 }
 
 EXPORT bool xcRunning(XClient* client)
@@ -415,13 +419,13 @@ EXPORT void xcSetThinkCallback(XClient* client, XClient::ThinkCallback value)
 EXPORT void xcExecuteCommand(XClient* client, const char* str)
 {
 	client->ensureContext();
-	client->mConsoleSystem.execute(str);
+	CONSOLE->execute(str);
 }
 
 EXPORT int xcGetEntityCount(XClient* client)
 {
 	client->ensureContext();
-	auto& entities = client->mClient.getEntities();
+	auto& entities = client->mClient->getEntities();
 	int high = 0;
 
 	for (auto& [index, entity] : entities)
@@ -438,7 +442,7 @@ EXPORT int xcGetEntityCount(XClient* client)
 EXPORT HL::Protocol::Entity* xcGetEntity(XClient* client, int index)
 {
 	client->ensureContext();
-	auto& entities = client->mClient.getEntities();
+	auto& entities = client->mClient->getEntities();
 
 	if (entities.count(index) > 0)
 		return entities.at(index);
@@ -449,7 +453,7 @@ EXPORT HL::Protocol::Entity* xcGetEntity(XClient* client, int index)
 EXPORT HL::Protocol::ClientData* xcGetClientData(XClient* client)
 {
 	client->ensureContext();
-	return const_cast<HL::Protocol::ClientData*>(&client->mClient.getClientData());
+	return const_cast<HL::Protocol::ClientData*>(&client->mClient->getClientData());
 }
 
 #endif
