@@ -326,13 +326,6 @@ public:
 		mConsoleCommands->setQuitCallback([this] {
 			mRunning = false;
 		});
-		
-		mClient->setReadGameMessageCallback([this](const std::string& name, void* memory, size_t size) {
-			if (mReadGameMessageCallback)
-			{
-				mReadGameMessageCallback(name.c_str(), memory, size);
-			}
-		});
 
 		EMBEDDED_CONSOLE_DEVICE->setWriteCallback([this](const auto& s, auto col) {
 			if (mConsoleWriteCallback)
@@ -356,16 +349,41 @@ public:
 		});
 
 		mClient->setThinkCallback([this](auto& cmd) {
+			if (!mFirstThink)
+			{
+				initializeGame();
+				mFirstThink = true;
+			}
 			if (mThinkCallback)
 			{
 				mThinkCallback(&cmd);
 			}
+		});
+
+		mClient->setReadGameMessageCallback([this](const std::string& name, void* memory, size_t size) {
+			if (mReadGameMessageCallback)
+			{
+				mReadGameMessageCallback(name.c_str(), memory, size);
+			}
+		});
+
+		mClient->setResourceRequiredCallback([this](const HL::Protocol::Resource& resource) -> bool {
+			if (resource.name == mClient->getMap())
+				return true;
+
+			return false;
 		});
 	}
 
 	void ensureContext()
 	{
 		ENGINE = &mEngine;
+	}
+
+private:
+	void initializeGame()
+	{
+		mBspFile.loadFromFile(mClient->getGameDir() + "/" + mClient->getMap(), false);
 	}
 
 public:
@@ -379,6 +397,10 @@ public:
 	ConsoleClearCallback mConsoleClearCallback = nullptr;
 	ThinkCallback mThinkCallback = nullptr;
 	ReadGameMessageCallback mReadGameMessageCallback = nullptr;
+
+private:
+	bool mFirstThink = false;
+	BSPFile mBspFile;
 };
 
 #define EXPORT extern "C" __declspec(dllexport) 
@@ -440,6 +462,12 @@ EXPORT void xcExecuteCommand(XClient* client, const char* str)
 {
 	client->ensureContext();
 	CONSOLE->execute(str);
+}
+
+EXPORT void xcSendCommand(XClient* client, const char* str)
+{
+	client->ensureContext();
+	client->mClient->sendCommand(str);
 }
 
 EXPORT int xcGetEntityCount(XClient* client)
