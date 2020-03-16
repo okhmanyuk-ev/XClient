@@ -77,6 +77,8 @@ function InitializeGmsgCallbacks(Callbacks)
 	Callbacks["SpecHealth"] = ReadSpecHealth
 	Callbacks["StatusText"] = ReadStatusText
 	Callbacks["ReloadSound"] = ReadReloadSound
+	Callbacks["Account"] = ReadAccount
+	Callbacks["HealthInfo"] = ReadHealthInfo
 end
 
 function ReadAmmoX(MSG)
@@ -1079,4 +1081,22 @@ function ReadReloadSound(MSG)
 	LogValueBegin()
 	LogValue("Volume", volume)
 	LogValueEnd("IsNotShotgun", isNotShotgun)
+end
+
+function ReadAccount(MSG)
+	local index = MSG:ReadUInt8()
+	local value = MSG:ReadUInt32()
+
+	LogValueBegin()
+	LogValue("Index", index)
+	LogValueEnd("Value", value)
+end
+
+function ReadHealthInfo(MSG)
+	local index = MSG:ReadUInt8()
+	local value = MSG:ReadUInt32()
+
+	LogValueBegin()
+	LogValue("Index", index)
+	LogValueEnd("Value", value)
 end
