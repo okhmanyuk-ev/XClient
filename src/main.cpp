@@ -12,6 +12,7 @@
 #include <sol/sol.hpp>
 #include <HL/bspfile.h>
 
+#ifndef XCLIENT_DLL
 class Scripting
 {	
 public:
@@ -301,3 +302,154 @@ void main(int argc, char* argv[])
 		FRAME->frame();
 	}
 }
+#else
+class XClient
+{
+public:
+	using ConsoleWriteCallback = void(*)(const char*);
+	using ConsoleClearCallback = void(*)();
+	using ThinkCallback = void(*)(HL::Protocol::UserCmd*);
+
+public:
+	XClient()
+	{
+		mConsoleCommands.setQuitCallback([this] {
+			mRunning = false;
+		});
+
+		mConsoleDevice.setWriteCallback([this](const auto& s, auto col) {
+			if (mConsoleWriteCallback)
+			{
+				mConsoleWriteCallback(s.c_str());
+			}
+		});
+
+		mConsoleDevice.setWriteLineCallback([this](const auto& s, auto col) {
+			if (mConsoleWriteLineCallback)
+			{
+				mConsoleWriteLineCallback(s.c_str());
+			}
+		});
+
+		mConsoleDevice.setClearCallback([this] {
+			if (mConsoleClearCallback)
+			{
+				mConsoleClearCallback();
+			}
+		});
+
+		mClient.setThinkCallback([this](auto& cmd) {
+			if (mThinkCallback)
+			{
+				mThinkCallback(&cmd);
+			}
+		});
+	}
+
+	void ensureContext()
+	{
+		ENGINE = &mEngine;
+	}
+
+public:
+	Core::Engine mEngine;
+	Common::EventSystem mEventSystem;
+	Common::FrameSystem mFrameSystem;
+	Common::EmbeddedConsoleDevice mConsoleDevice;
+	Console::System mConsoleSystem;
+	Common::ConsoleCommands mConsoleCommands;
+	Network::System mNetworkSystem;
+	HL::PlayableClient mClient;
+	bool mRunning = true;
+
+	ConsoleWriteCallback mConsoleWriteCallback = nullptr;
+	ConsoleWriteCallback mConsoleWriteLineCallback = nullptr;
+	ConsoleClearCallback mConsoleClearCallback = nullptr;
+	ThinkCallback mThinkCallback = nullptr;
+};
+
+#define EXPORT extern "C" __declspec(dllexport) 
+
+EXPORT void* xcCreate()
+{
+	return new XClient();
+}
+
+EXPORT void xcDestroy(XClient* client)
+{
+	client->ensureContext();
+	delete client;
+}
+
+EXPORT void xcFrame(XClient* client)
+{
+	client->ensureContext();
+	client->mFrameSystem.frame();
+}
+
+EXPORT bool xcRunning(XClient* client)
+{
+	return client->mRunning;
+}
+
+EXPORT void xcSetConsoleWriteCallback(XClient* client, XClient::ConsoleWriteCallback value)
+{
+	client->mConsoleWriteCallback = value;
+}
+
+EXPORT void xcSetConsoleWriteLineCallback(XClient* client, XClient::ConsoleWriteCallback value)
+{
+	client->mConsoleWriteLineCallback = value;
+}
+
+EXPORT void xcSetConsoleClearCallback(XClient* client, XClient::ConsoleClearCallback value)
+{
+	client->mConsoleClearCallback = value;
+}
+
+EXPORT void xcSetThinkCallback(XClient* client, XClient::ThinkCallback value)
+{
+	client->mThinkCallback = value;
+}
+
+EXPORT void xcExecuteCommand(XClient* client, const char* str)
+{
+	client->ensureContext();
+	client->mConsoleSystem.execute(str);
+}
+
+EXPORT int xcGetEntityCount(XClient* client)
+{
+	client->ensureContext();
+	auto& entities = client->mClient.getEntities();
+	int high = 0;
+
+	for (auto& [index, entity] : entities)
+	{
+		if (high >= index)
+			continue;
+
+		high = index;
+	}
+
+	return high;
+}
+
+EXPORT HL::Protocol::Entity* xcGetEntity(XClient* client, int index)
+{
+	client->ensureContext();
+	auto& entities = client->mClient.getEntities();
+
+	if (entities.count(index) > 0)
+		return entities.at(index);
+	else
+		return nullptr;
+}
+
+EXPORT HL::Protocol::ClientData* xcGetClientData(XClient* client)
+{
+	client->ensureContext();
+	return const_cast<HL::Protocol::ClientData*>(&client->mClient.getClientData());
+}
+
+#endif

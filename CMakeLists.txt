@@ -13,8 +13,17 @@ file(GLOB MAIN_SRC
 	"src/*.h"
 )
 
-add_executable(${PROJECT_NAME} 
-#add_library(${PROJECT_NAME} SHARED 
+# exe version
+
+#add_executable(${PROJECT_NAME} 
+#	${MAIN_SRC}
+#)
+
+# dll version
+
+add_definitions(-DXCLIENT_DLL)
+
+add_library(${PROJECT_NAME} SHARED 
 	${MAIN_SRC}
 )
 
@@ -25,7 +34,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY $
 
 add_subdirectory(sky)
 target_link_libraries(${PROJECT_NAME} sky)
-copy_required_libs(${PROJECT_NAME})
 
 # hl
 
