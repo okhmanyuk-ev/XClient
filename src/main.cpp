@@ -9,10 +9,11 @@
 #include <Common/native_console_device.h>
 #include <Platform/asset.h>
 #include <Common/size_converter.h>
-#include <sol/sol.hpp>
 #include <HL/bspfile.h>
 
 #ifndef XCLIENT_DLL
+#include <sol/sol.hpp>
+
 class Scripting
 {	
 public:
