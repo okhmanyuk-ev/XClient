@@ -150,15 +150,22 @@ function ReadSayText(MSG)
 	]]
 
     local senderId = MSG:ReadUInt8()
-    local s1 = MSG:ReadString()
-    local s2 = MSG:ReadString()
-	local s3 = MSG:ReadString()
-	
+	local s1 = MSG:ReadString()
+		
 	LogValueBegin()
 	LogValue("SenderId", senderId)
-	LogValue("S1", s1)
-	LogValue("S2", s2)
-	LogValueEnd("S3", s3)
+	
+	if s1:sub(1, 1) == "#" then
+		local s2 = MSG:ReadString()
+		local s3 = MSG:ReadString()
+
+		LogValue("S1", s1)
+		LogValue("S2", s2)
+		LogValueEnd("S3", s3)
+	else
+		LogValueEnd("S1", s1)
+	end
+
 	
 	--[[Log("SenderID: " .. tostring(senderId) .. ", S1: " .. s1 .. ", S2: " .. s2 .. ", S3: " .. s3)
 	

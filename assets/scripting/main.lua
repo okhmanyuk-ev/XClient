@@ -47,7 +47,7 @@ function ReadGameMessage(Name, Memory)
 			CurrentGmsgName = Name -- gmsg.lua
 			callback(MSG)
 			if MSG.Position ~= MSG.Size then
-				Log("game message " .. Name .. " bad reading (" .. tostring(MSG.Position) .. "/" .. tostring(MSG.Size) .. ")")
+				Log("game message " .. Name .. " bad reading (pos: " .. tostring(MSG.Position) .. ", size: " .. tostring(MSG.Size) .. ")")
 			end
 			return
 		end
