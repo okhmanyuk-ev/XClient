@@ -8,7 +8,6 @@
 #include <HL/playable_client.h>
 #include <Common/native_console_device.h>
 #include <Platform/asset.h>
-#include <Common/size_converter.h>
 #include <HL/bspfile.h>
 
 #ifndef XCLIENT_DLL
@@ -292,7 +291,7 @@ void main(int argc, char* argv[])
 	timer.setInterval(Clock::FromSeconds(1.0f));
 	timer.setCallback([&] {
 		NATIVE_CONSOLE_DEVICE->setTitle("XClient - " + std::to_string(framerateCounter.getFramerate()) + " fps, " +
-			Common::SizeConverter::ToString(scripting.getMemoryUsed()) + " mem");
+			Common::Helpers::BytesToNiceString(scripting.getMemoryUsed()) + " mem");
 	});
 
 	bool shutdown = false;
