@@ -255,6 +255,10 @@ public:
 			}
 		});
 
+		mClient.setDisconnectCallback([this](const auto& reason) {
+			mFirstThink = false;
+		});
+
 		// frame
 
 		mFramer.setCallback([this] {
