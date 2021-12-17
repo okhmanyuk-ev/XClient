@@ -1,6 +1,5 @@
 require "utils"
 
-local visible = false
 local nav = nil
 
 function InitNav()
@@ -10,7 +9,7 @@ function InitNav()
 	Log("nav loaded")
 end
 
-function FindPlayerEntity(Expression) -- Expression(I) -> bool
+function FindFirstPlayerEntity(Expression) -- Expression(I) -> bool
 	for I = 0, Client.GetEntitiesCount() - 1 do
 		if I ~= Client.GetIndex() + 1 then
 			if Client.IsEntityActive(I) then
@@ -25,24 +24,65 @@ function FindPlayerEntity(Expression) -- Expression(I) -> bool
 	return nil
 end
 
+function FindNearestEntity(Expression)
+	local result = nil
+	local min_distance = 9999.0
+	for I = 0, Client.GetEntitiesCount() - 1 do	
+		if not Expression or Expression(I) then
+			local entity = Client.GetEntity(I)
+			local origin = Vec3.New(entity.origin)
+			local distance = GetDistance(origin)
+			if distance < min_distance then
+				min_distance = distance
+				result = entity
+			end
+		end
+	end
+	return result
+end
+
+function FindNearestVisiblePlayerEntity(Expression) -- Expression(I) -> bool
+	return FindNearestEntity(function(I)
+		if I == Client.GetIndex() + 1 then
+			return false
+		end
+		if not Client.IsEntityActive(I) then
+			return false
+		end
+		if not Client.IsPlayerIndex(I) then
+			return false
+		end
+		if Expression and not Expression(I) then
+			return false
+		end
+		local entity = Client.GetEntity(I)
+		local origin = Vec3.New(entity.origin)
+		if not IsVisible(origin) then
+			return false
+		end
+		return true
+	end)
+end
+
 function TestMove()
-	local player = FindPlayerEntity()
+	local player = FindNearestVisiblePlayerEntity()
 
 	if player == nil then
 		return
 	end
 
-	local origin = Vec3.New(player.origin)
-
-	LookAt(origin)
-
+	--[[
 	if visible and not IsVisible(origin) then
 		visible = false
 		Log("not visible")
 	elseif not visible and IsVisible(origin) then
 		visible = true
 		Log("visible")
-	end
+	end]]
+
+	local origin = Vec3.New(player.origin)
+
+	LookAt(origin)
 
 	local distance = GetDistance(origin)
 
@@ -72,6 +112,6 @@ function TestNavMove()
 end
 
 function Move()
-	--TestMove()
-	TestNavMove()
+	TestMove()
+	--TestNavMove()
 end

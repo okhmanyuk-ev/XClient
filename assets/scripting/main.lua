@@ -31,13 +31,23 @@ local ThinkTime = 0
 local UserCmd = {}
 
 function Initialize()
+	Log(_VERSION)
 	TestFeatures()
 	InitializeGmsgCallbacks(GameMessageCallbacks)
-	math.randomseed(os.clock())
+	math.randomseed()
 	GenerateCertificate()
 
 	Console.Execute("sys_framerate 60")
 	Console.Execute("connect 127.0.0.1")
+
+	
+	--[[Console.RegisterCommand("lua", "execute lua code", { "string" }, function(Args)
+		local str = ""
+		for I = 1, #Args do
+			str = str .. Args[I] .. " "
+		end
+		dostring(str)
+	end)]]
 end
 
 function ReadGameMessage(Name, Memory)
@@ -77,11 +87,12 @@ function Think()
 	local thinkDelta = now - ThinkTime
 	ThinkTime = now
 
-	UserCmd.MSec = thinkDelta
+	UserCmd.MSec = math.floor(thinkDelta)
 	UserCmd.ForwardMove = 0
 	UserCmd.SideMove = 0
+	UserCmd.UpMove = 0
 	UserCmd.Buttons = 0
-	UserCmd.ViewAngles = { 0, 0, 0 }
+	--UserCmd.ViewAngles = { 0, 0, 0 }
 
 	Move()
 

@@ -16,7 +16,7 @@
 class Scripting
 {	
 public:
-	void handleError(sol::protected_function_result pfr)
+	void handleError(const sol::protected_function_result& pfr)
 	{
 		CONSOLE_DEVICE->writeLine("");
 		CONSOLE_DEVICE->writeLine(sol::to_string(pfr.status()), Console::Color::Red);

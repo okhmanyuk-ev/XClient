@@ -979,37 +979,55 @@ function ReadBrass(MSG)
 		This message creates a brass shell. Used, for example, by the AWP, after firing.
 	]]
 
-	local messageId = MSG:ReadUInt8()
+	local isCzero = Client.GetGameDir() == "czero"
+
+	LogValueBegin()
+
+	messageId = nil;
+
+	if not isCzero then
+		local messageId = MSG:ReadUInt8()
+		LogValue("MessageId", messageId)
+	end
+
 	local startX = MSG:ReadCoord()
 	local startY = MSG:ReadCoord()
 	local startZ = MSG:ReadCoord()
-	local velocityX = MSG:ReadCoord()
-	local velocityY = MSG:ReadCoord()
-	local velocityZ = MSG:ReadCoord()
-	local unkX = MSG:ReadCoord()
-	local unkY = MSG:ReadCoord()
-	local unkZ = MSG:ReadCoord()
-	local rotation = MSG:ReadAngle()
-	local modelIndex = MSG:ReadInt16()
-	local bounceSoundType = MSG:ReadUInt8()
-	local life = MSG:ReadUInt8()
-	local playerId = MSG:ReadUInt8()
-
-	LogValueBegin()
-	LogValue("MessageId", messageId)
+	
 	LogValue("StartX", startX)
 	LogValue("StartY", startY)
 	LogValue("StartZ", startZ)
+
+	if not isCzero then
+		local leftX = MSG:ReadCoord()
+		local leftY = MSG:ReadCoord()
+		local leftZ = MSG:ReadCoord()
+
+		LogValue("LeftX", velocityX)
+		LogValue("LeftY", velocityY)
+		LogValue("LeftZ", velocityZ)
+	end
+
+	local velocityX = MSG:ReadCoord()
+	local velocityY = MSG:ReadCoord()
+	local velocityZ = MSG:ReadCoord()
+	local rotation = MSG:ReadAngle()
+	local modelIndex = MSG:ReadInt16()
+	local bounceSoundType = MSG:ReadUInt8()
+	
 	LogValue("VelocityX", velocityX)
 	LogValue("VelocityY", velocityY)
 	LogValue("VelocityZ", velocityZ)
-	LogValue("UnkX", unkX)
-	LogValue("UnkY", unkY)
-	LogValue("UnkZ", unkZ)
 	LogValue("Rotation", rotation)
 	LogValue("ModelIndex", modelIndex)
 	LogValue("BounceSoundType", bounceSoundType)
-	LogValue("Life", life)
+	
+	if not isCzero then
+		local life = MSG:ReadUInt8()
+		LogValue("Life", life)
+	end
+
+	local playerId = MSG:ReadUInt8()
 	LogValueEnd("PlayerId", playerId)
 end
 
