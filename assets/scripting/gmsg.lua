@@ -1110,7 +1110,7 @@ end
 
 function ReadAccount(MSG)
 	local index = MSG:ReadUInt8()
-	local value = MSG:ReadUInt32()
+	local value = MSG:ReadInt32()
 
 	LogValueBegin()
 	LogValue("Index", index)
@@ -1119,7 +1119,7 @@ end
 
 function ReadHealthInfo(MSG)
 	local index = MSG:ReadUInt8()
-	local value = MSG:ReadUInt32()
+	local value = MSG:ReadInt32()
 
 	LogValueBegin()
 	LogValue("Index", index)
