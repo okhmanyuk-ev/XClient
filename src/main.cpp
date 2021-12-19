@@ -319,7 +319,7 @@ public:
 	XClient()
 	{
 		ENGINE->addSystem<Common::FrameSystem>(std::make_shared<Common::FrameSystem>());
-		ENGINE->addSystem<Common::EventSystem>(std::make_shared<Common::EventSystem>());
+		ENGINE->addSystem<Common::Event::System>(std::make_shared<Common::Event::System>());
 		ENGINE->addSystem<Console::Device>(std::make_shared<Common::EmbeddedConsoleDevice>());
 		ENGINE->addSystem<Console::System>(std::make_shared<Console::System>());
 		ENGINE->addSystem<Network::System>(std::make_shared<Network::System>());
