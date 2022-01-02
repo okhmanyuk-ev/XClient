@@ -1,6 +1,7 @@
 #include "ai_client.h"
 #include <HL/utils.h>
 #include "mod_cs.h"
+#include <common/helpers.h>
 
 AiClient::AiClient()
 {
@@ -18,21 +19,35 @@ AiClient::AiClient()
 		msg.toStart();
 		mMod->readMessage(name, msg);
 	});
+
+	setResourceRequiredCallback([this](const HL::Protocol::Resource& resource) -> bool {
+		const auto& info = getServerInfo().value();
+
+		if (resource.name == info.map)
+			return true;
+
+		return false;
+	});
+}
+
+void AiClient::initializeGameEngine()
+{
+	PlayableClient::initializeGameEngine();
+
+	mThinkTime = Clock::Now();
+
+	mMod = std::make_shared<ModCS>();
+	mMod->setGetClientCallback([this]()->HL::BaseClient& {
+		return *this;
+	});
 }
 
 void AiClient::initializeGame()
 {
 	PlayableClient::initializeGame();
 
-	mThinkTime = Clock::Now();
-
 	const auto& info = getServerInfo().value();
 	mBspFile.loadFromFile(info.game_dir + "/" + info.map, false);
-
-	mMod = std::make_shared<ModCS>();
-	mMod->setGetClientCallback([this]()->HL::BaseClient& {
-		return *this;
-	});
 
 	CONSOLE->execute("delay 1 'cmd \"jointeam 2\"'");
 	CONSOLE->execute("delay 2 'cmd \"joinclass 6\"'");
@@ -146,8 +161,13 @@ void AiClient::moveFrom(HL::Protocol::UserCmd& usercmd, const HL::Protocol::Enti
 void AiClient::lookAt(HL::Protocol::UserCmd& usercmd, const glm::vec3& origin) const
 {
 	auto v = origin - getClientData().origin;
-	usercmd.viewangles.x = (float)-glm::degrees(glm::atan(v.z, glm::sqrt(v.x * v.x + v.y * v.y))); // TODO: glm dot?
-	usercmd.viewangles.y = (float)glm::degrees(glm::atan(v.y, v.x));
+	glm::vec3 viewangles;
+	viewangles.x = (float)-glm::degrees(glm::atan(v.z, glm::sqrt(v.x * v.x + v.y * v.y))); // TODO: glm dot?
+	viewangles.y = (float)glm::degrees(glm::atan(v.y, v.x));
+	viewangles.z = 0.0f;
+
+	usercmd.viewangles.x = Common::Helpers::SmoothValueAssign(usercmd.viewangles.x, viewangles.x, Clock::FromMilliseconds(usercmd.msec));
+	usercmd.viewangles.y = glm::degrees(Common::Helpers::SmoothRotationAssign(glm::radians(usercmd.viewangles.y), glm::radians(viewangles.y), Clock::FromMilliseconds(usercmd.msec)));
 	usercmd.viewangles.z = 0.0f;
 }
 

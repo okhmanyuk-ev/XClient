@@ -10,7 +10,8 @@ public:
 	AiClient();
 
 protected:
-	void initializeGame();
+	void initializeGameEngine() override;
+	void initializeGame() override;
 	void think(HL::Protocol::UserCmd& usercmd);
 	void testMove(HL::Protocol::UserCmd& usercmd);
 	bool isVisible(const glm::vec3& origin) const;
