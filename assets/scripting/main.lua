@@ -28,7 +28,9 @@ require "nav"
 
 local GameMessageCallbacks = {}
 local ThinkTime = 0
-local UserCmd = {}
+local UserCmd = {
+	ViewAngles = { 0.0, 0.0, 0.0 }
+}
 
 function Initialize()
 	Log(_VERSION)
@@ -92,7 +94,6 @@ function Think()
 	UserCmd.SideMove = 0
 	UserCmd.UpMove = 0
 	UserCmd.Buttons = 0
-	--UserCmd.ViewAngles = { 0, 0, 0 }
 
 	Move()
 

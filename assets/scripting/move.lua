@@ -112,6 +112,6 @@ function TestNavMove()
 end
 
 function Move()
-	TestMove()
-	--TestNavMove()
+	--TestMove()
+	TestNavMove()
 end

@@ -19,66 +19,70 @@ function LogValueEnd(Name, Value)
 end
 
 function InitializeGmsgCallbacks(Callbacks)
-    Callbacks["AmmoX"] = ReadAmmoX
-	Callbacks["WeaponList"] = ReadWeaponList
-    Callbacks["ReqState"] = ReadReqState
-	Callbacks["SayText"] = ReadSayText
-	Callbacks["MOTD"] = ReadMOTD
-	Callbacks["TeamInfo"] = ReadTeamInfo
-	Callbacks["ScoreInfo"] = ReadScoreInfo
-	Callbacks["TextMsg"] = ReadTextMsg
-	Callbacks["ServerName"] = ReadServerName
-	Callbacks["Money"] = ReadMoney
-	Callbacks["TeamScore"] = ReadTeamScore
-	Callbacks["ScoreAttrib"] = ReadScoreAttrib
-	Callbacks["StatusIcon"] = ReadStatusIcon
-	Callbacks["StatusValue"] = ReadStatusValue
-	Callbacks["FlashBat"] = ReadFlashBat
-	Callbacks["CurWeapon"] = ReadCurWeapon
-	Callbacks["Health"] = ReadHealth
-	Callbacks["RoundTime"] = ReadRoundTime
-	Callbacks["SetFOV"] = ReadSetFOV
-	Callbacks["Location"] = ReadLocation
-	Callbacks["WeapPickup"] = ReadWeapPickup
-	Callbacks["AmmoPickup"] = ReadAmmoPickup
-	Callbacks["ScreenFade"] = ReadScreenFade
-	Callbacks["Damage"] = ReadDamage
-	Callbacks["DeathMsg"] = ReadDeathMsg
-	Callbacks["HostagePos"] = ReadHostagePos
-	Callbacks["Battery"] = ReadBattery
-	Callbacks["BarTime"] = ReadBarTime
-	Callbacks["HudTextArgs"] = ReadHudTextArgs
-	Callbacks["HideWeapon"] = ReadHideWeapon
-	Callbacks["SendAudio"] = ReadSendAudio
-	Callbacks["Geiger"] = ReadGeiger
-	Callbacks["Radar"] = ReadRadar
-	Callbacks["ShowMenu"] = ReadShowMenu
-	Callbacks["Train"] = ReadTrain
-	Callbacks["ResetHUD"] = ReadResetHUD
-	Callbacks["InitHUD"] = ReadInitHUD
-	Callbacks["GameMode"] = ReadGameMode
-	Callbacks["ViewMode"] = ReadViewMode
-	Callbacks["ShadowIdx"] = ReadShadowIdx
-	Callbacks["AllowSpec"] = ReadAllowSpec
-	Callbacks["ItemStatus"] = ReadItemStatus
-	Callbacks["ForceCam"] = ReadForceCam
-	Callbacks["Crosshair"] = ReadCrosshair
-	Callbacks["Spectator"] = ReadSpectator
-	Callbacks["NVGToggle"] = ReadNVGToggle
-	Callbacks["VGUIMenu"] = ReadVGUIMenu
-	Callbacks["ADStop"] = ReadADStop
-	Callbacks["BotVoice"] = ReadBotVoice
-	Callbacks["Scenario"] = ReadScenario
-	Callbacks["ClCorpse"] = ReadClCorpse
-	Callbacks["Brass"] = ReadBrass
-	Callbacks["BombDrop"] = ReadBombDrop
-	Callbacks["BombPickup"] = ReadBombPickup
-	Callbacks["ShowTimer"] = ReadShowTimer
-	Callbacks["SpecHealth"] = ReadSpecHealth
-	Callbacks["StatusText"] = ReadStatusText
-	Callbacks["ReloadSound"] = ReadReloadSound
-	Callbacks["Account"] = ReadAccount
-	Callbacks["HealthInfo"] = ReadHealthInfo
+    local AddCallback = function(Name, Func)
+		Callbacks[Name] = Func;
+	end	
+	
+	AddCallback("AmmoX", ReadAmmoX)
+	AddCallback("WeaponList", ReadWeaponList)
+    AddCallback("ReqState", ReadReqState)
+	AddCallback("SayText", ReadSayText)
+	AddCallback("MOTD", ReadMOTD)
+	AddCallback("TeamInfo", ReadTeamInfo)
+	AddCallback("ScoreInfo", ReadScoreInfo)
+	AddCallback("TextMsg", ReadTextMsg)
+	AddCallback("ServerName", ReadServerName)
+	AddCallback("Money", ReadMoney)
+	AddCallback("TeamScore", ReadTeamScore)
+	AddCallback("ScoreAttrib", ReadScoreAttrib)
+	AddCallback("StatusIcon", ReadStatusIcon)
+	AddCallback("StatusValue", ReadStatusValue)
+	AddCallback("FlashBat", ReadFlashBat)
+	AddCallback("CurWeapon", ReadCurWeapon)
+	AddCallback("Health", ReadHealth)
+	AddCallback("RoundTime", ReadRoundTime)
+	AddCallback("SetFOV", ReadSetFOV)
+	AddCallback("Location", ReadLocation)
+	AddCallback("WeapPickup", ReadWeapPickup)
+	AddCallback("AmmoPickup", ReadAmmoPickup)
+	AddCallback("ScreenFade", ReadScreenFade)
+	AddCallback("Damage", ReadDamage)
+	AddCallback("DeathMsg", ReadDeathMsg)
+	AddCallback("HostagePos", ReadHostagePos)
+	AddCallback("Battery", ReadBattery)
+	AddCallback("BarTime", ReadBarTime)
+	AddCallback("HudTextArgs", ReadHudTextArgs)
+	AddCallback("HideWeapon", ReadHideWeapon)
+	AddCallback("SendAudio", ReadSendAudio)
+	AddCallback("Geiger", ReadGeiger)
+	AddCallback("Radar", ReadRadar)
+	AddCallback("ShowMenu", ReadShowMenu)
+	AddCallback("Train", ReadTrain)
+	AddCallback("ResetHUD", ReadResetHUD)
+	AddCallback("InitHUD", ReadInitHUD)
+	AddCallback("GameMode", ReadGameMode)
+	AddCallback("ViewMode", ReadViewMode)
+	AddCallback("ShadowIdx", ReadShadowIdx)
+	AddCallback("AllowSpec", ReadAllowSpec)
+	AddCallback("ItemStatus", ReadItemStatus)
+	AddCallback("ForceCam", ReadForceCam)
+	AddCallback("Crosshair", ReadCrosshair)
+	AddCallback("Spectator", ReadSpectator)
+	AddCallback("NVGToggle", ReadNVGToggle)
+	AddCallback("VGUIMenu", ReadVGUIMenu)
+	AddCallback("ADStop", ReadADStop)
+	AddCallback("BotVoice", ReadBotVoice)
+	AddCallback("Scenario", ReadScenario)
+	AddCallback("ClCorpse", ReadClCorpse)
+	AddCallback("Brass", ReadBrass)
+	AddCallback("BombDrop", ReadBombDrop)
+	AddCallback("BombPickup", ReadBombPickup)
+	AddCallback("ShowTimer", ReadShowTimer)
+	AddCallback("SpecHealth", ReadSpecHealth)
+	AddCallback("StatusText", ReadStatusText)
+	AddCallback("ReloadSound", ReadReloadSound)
+	AddCallback("Account", ReadAccount)
+	AddCallback("HealthInfo", ReadHealthInfo)
 end
 
 function ReadAmmoX(MSG)

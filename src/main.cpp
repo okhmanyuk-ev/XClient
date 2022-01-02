@@ -36,8 +36,8 @@ public:
 
 	void initializeGame()
 	{
-		mBspFile.loadFromFile(mClient.getGameDir() + "/" + mClient.getMap(), false);
-
+		const auto& info = mClient.getServerInfo().value();
+		mBspFile.loadFromFile(info.game_dir + "/" + info.map, false);
 		lua["InitializeGame"]();
 	}
 
@@ -135,13 +135,16 @@ public:
 			mClient.sendCommand(s);
 		};
 		nsClient["GetIndex"] = [this] {
-			return mClient.getIndex();
+			const auto& info = mClient.getServerInfo().value();
+			return info.index;
 		};
 		nsClient["GetMap"] = [this] {
-			return mClient.getMap();
+			const auto& info = mClient.getServerInfo().value();
+			return info.map;
 		};
 		nsClient["GetGameDir"] = [this] {
-			return mClient.getGameDir();
+			const auto& info = mClient.getServerInfo().value();
+			return info.game_dir;
 		};
 		nsClient["GetOrigin"] = [this] {
 			auto origin = mClient.getClientData().origin;
@@ -224,7 +227,9 @@ public:
 			lua["ReadGameMessage"](name, std::string((char*)memory, size));
 		});
 		mClient.setResourceRequiredCallback([this](const HL::Protocol::Resource& resource) -> bool {
-			if (resource.name == mClient.getMap())
+			const auto& info = mClient.getServerInfo().value();
+
+			if (resource.name == info.map)
 				return true;
 
 			return lua["IsResourceRequired"](resource.name);
