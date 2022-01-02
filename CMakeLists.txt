@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8.0)
 project(XClient)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:Console /ENTRY:mainCRTStartup")
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions(-DNOMINMAX)
 
@@ -19,6 +19,9 @@ if(XCLIENT_DLL)
 		${MAIN_SRC}
 	)
 else()
+	if(XCLIENT_LUA)
+		add_definitions(-DXCLIENT_LUA)
+	endif()
 	add_executable(${PROJECT_NAME} 
 		${MAIN_SRC}
 	)

@@ -90,9 +90,9 @@ function Think()
 	ThinkTime = now
 
 	UserCmd.MSec = math.floor(thinkDelta)
-	UserCmd.ForwardMove = 0
-	UserCmd.SideMove = 0
-	UserCmd.UpMove = 0
+	UserCmd.ForwardMove = 0.0
+	UserCmd.SideMove = 0.0
+	UserCmd.UpMove = 0.0
 	UserCmd.Buttons = 0
 
 	Move()

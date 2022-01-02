@@ -11,9 +11,10 @@
 #include <HL/bspfile.h>
 
 #ifndef XCLIENT_DLL
+#ifdef XCLIENT_LUA
 #include <sol/sol.hpp>
 
-class Scripting
+class Client : public HL::PlayableClient
 {	
 public:
 	void handleError(const sol::protected_function_result& pfr)
@@ -36,12 +37,12 @@ public:
 
 	void initializeGame()
 	{
-		const auto& info = mClient.getServerInfo().value();
+		const auto& info = getServerInfo().value();
 		mBspFile.loadFromFile(info.game_dir + "/" + info.map, false);
 		lua["InitializeGame"]();
 	}
 
-	Scripting(HL::PlayableClient& client) : mClient(client)
+	Client()
 	{	
 		lua.open_libraries();
 		lua.set_panic(HandlePanic);
@@ -132,22 +133,22 @@ public:
 
 		auto nsClient = lua.create_named_table("Client");
 		nsClient["SendCommand"] = [this](const std::string& s) {
-			mClient.sendCommand(s);
+			sendCommand(s);
 		};
 		nsClient["GetIndex"] = [this] {
-			const auto& info = mClient.getServerInfo().value();
+			const auto& info = getServerInfo().value();
 			return info.index;
 		};
 		nsClient["GetMap"] = [this] {
-			const auto& info = mClient.getServerInfo().value();
+			const auto& info = getServerInfo().value();
 			return info.map;
 		};
 		nsClient["GetGameDir"] = [this] {
-			const auto& info = mClient.getServerInfo().value();
+			const auto& info = getServerInfo().value();
 			return info.game_dir;
 		};
 		nsClient["GetOrigin"] = [this] {
-			auto origin = mClient.getClientData().origin;
+			auto origin = getClientData().origin;
 			auto result = lua.create_table();
 			result[1] = origin[0];
 			result[2] = origin[1];
@@ -155,16 +156,16 @@ public:
 			return result;
 		};
 		nsClient["GetEntitiesCount"] = [this] {
-			return mClient.getEntities().size();
+			return getEntities().size();
 		};
 		nsClient["IsEntityActive"] = [this](int index) {
-			return mClient.getEntities().count(index) > 0;
+			return getEntities().count(index) > 0;
 		};
 		nsClient["IsPlayerIndex"] = [this](int index) {
-			return mClient.isPlayerIndex(index);
+			return isPlayerIndex(index);
 		};
 		nsClient["GetEntity"] = [this](int index) {
-			const auto& ent = *mClient.getEntities().at(index);
+			const auto& ent = *getEntities().at(index);
 			auto result = lua.create_table();
 			
 			result["origin"] = lua.create_table();
@@ -204,7 +205,7 @@ public:
 			return result;
 		};
 		nsClient["SetCertificate"] = [this](const std::string& value) {
-			mClient.setCertificate({ value.begin(), value.end() });
+			setCertificate({ value.begin(), value.end() });
 		};
 
 		// start
@@ -223,11 +224,11 @@ public:
 		
 		// read game messages
 
-		mClient.setReadGameMessageCallback([this](const std::string& name, void* memory, size_t size) {
+		setReadGameMessageCallback([this](const std::string& name, void* memory, size_t size) {
 			lua["ReadGameMessage"](name, std::string((char*)memory, size));
 		});
-		mClient.setResourceRequiredCallback([this](const HL::Protocol::Resource& resource) -> bool {
-			const auto& info = mClient.getServerInfo().value();
+		setResourceRequiredCallback([this](const HL::Protocol::Resource& resource) -> bool {
+			const auto& info = getServerInfo().value();
 
 			if (resource.name == info.map)
 				return true;
@@ -237,7 +238,7 @@ public:
 
 		// think
 
-		mClient.setThinkCallback([this](HL::Protocol::UserCmd& usercmd) {
+		setThinkCallback([this](HL::Protocol::UserCmd& usercmd) {
 			if (!mFirstThink)
 			{
 				initializeGame();
@@ -260,7 +261,7 @@ public:
 			}
 		});
 
-		mClient.setDisconnectCallback([this](const auto& reason) {
+		setDisconnectCallback([this](const auto& reason) {
 			mFirstThink = false;
 		});
 
@@ -275,7 +276,6 @@ public:
 
 private:
 	bool mFirstThink = false;
-	HL::PlayableClient& mClient;
 	Common::FrameSystem::Framer mFramer;
 	sol::state lua;
 	BSPFile mBspFile;
@@ -292,15 +292,15 @@ void main(int argc, char* argv[])
 	ENGINE->addSystem<Network::System>(std::make_shared<Network::System>());
 
 	Common::ConsoleCommands consoleCommands;
-	HL::PlayableClient client;
 	Common::FramerateCounter framerateCounter;
-	Scripting scripting(client);
+	Client client;
 
 	Common::Timer timer;
 	timer.setInterval(Clock::FromSeconds(1.0f));
 	timer.setCallback([&] {
-		NATIVE_CONSOLE_DEVICE->setTitle("XClient - " + std::to_string(framerateCounter.getFramerate()) + " fps, " +
-			Common::Helpers::BytesToNiceString(scripting.getMemoryUsed()) + " mem");
+		NATIVE_CONSOLE_DEVICE->setTitle(fmt::format("XClient - {} fps, {} mem", 
+			framerateCounter.getFramerate(), Common::Helpers::BytesToNiceString(client.getMemoryUsed()))
+		);
 	});
 
 	bool shutdown = false;
@@ -311,6 +311,38 @@ void main(int argc, char* argv[])
 		FRAME->frame();
 	}
 }
+#else
+#include "ai_client.h"
+
+void main(int argc, char* argv[])
+{
+	Core::Engine engine;
+
+	ENGINE->addSystem<Common::FrameSystem>(std::make_shared<Common::FrameSystem>());
+	ENGINE->addSystem<Common::Event::System>(std::make_shared<Common::Event::System>());
+	ENGINE->addSystem<Console::Device>(std::make_shared<Common::NativeConsoleDevice>());
+	ENGINE->addSystem<Console::System>(std::make_shared<Console::System>());
+	ENGINE->addSystem<Network::System>(std::make_shared<Network::System>());
+
+	Common::ConsoleCommands consoleCommands;
+	Common::FramerateCounter framerateCounter;
+	AiClient client;
+	
+	Common::Timer timer;
+	timer.setInterval(Clock::FromSeconds(1.0f));
+	timer.setCallback([&] {
+		NATIVE_CONSOLE_DEVICE->setTitle(fmt::format("XClient - {} fps", framerateCounter.getFramerate()));
+	});
+
+	bool shutdown = false;
+	consoleCommands.setQuitCallback([&shutdown] { shutdown = true; });
+
+	while (!shutdown)
+	{
+		FRAME->frame();
+	}
+}
+#endif
 #else
 class XClient
 {
