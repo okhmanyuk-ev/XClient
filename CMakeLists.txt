@@ -1,17 +1,29 @@
-cmake_minimum_required(VERSION 3.8.0)
+cmake_minimum_required(VERSION 3.10)
 project(XClient)
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:Console /ENTRY:mainCRTStartup")
+set(PRODUCT_NAME "XClient")
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions(-DNOMINMAX)
 
 # main
 
+if(BUILD_DEVELOPER)
+	add_definitions(-DBUILD_DEVELOPER)
+endif()
+
+add_definitions(-DPROJECT_NAME="${PROJECT_NAME}")
+add_definitions(-DPRODUCT_NAME="${PRODUCT_NAME}")
+
 file(GLOB MAIN_SRC
 	"src/*.cpp"
 	"src/*.h"
 )
+
+source_group("all" FILES ${MAIN_SRC})
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:Console /ENTRY:mainCRTStartup")
 
 if(XCLIENT_DLL)
 	add_definitions(-DXCLIENT_DLL)

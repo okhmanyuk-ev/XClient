@@ -24,7 +24,7 @@ function FindFirstPlayerEntity(Expression) -- Expression(I) -> bool
 	return nil
 end
 
-function FindNearestEntity(Expression)
+function FindNearestEntity(Expression) -- TODO: here is a big mistake when we do FOR in ENTITIES, I is not Ent index, it is just iterator index
 	local result = nil
 	local min_distance = 9999.0
 	for I = 0, Client.GetEntitiesCount() - 1 do	
@@ -46,10 +46,10 @@ function FindNearestVisiblePlayerEntity(Expression) -- Expression(I) -> bool
 		if I == Client.GetIndex() + 1 then
 			return false
 		end
-		if not Client.IsEntityActive(I) then
+		if not Client.IsEntityActive(I) then -- TODO: we should NOT check it, we iterating though ONLY active entities
 			return false
 		end
-		if not Client.IsPlayerIndex(I) then
+		if not Client.IsPlayerIndex(I) then -- TODO: I is not Entity Index, it is iterator index !!! here is big mistake
 			return false
 		end
 		if Expression and not Expression(I) then

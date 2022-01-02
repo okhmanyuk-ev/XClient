@@ -35,8 +35,9 @@ public:
 		return 0;
 	}
 
-	void initializeGame()
+	void initializeGame() override
 	{
+		HL::PlayableClient::initializeGame();
 		const auto& info = getServerInfo().value();
 		mBspFile.loadFromFile(info.game_dir + "/" + info.map, false);
 		lua["InitializeGame"]();
@@ -239,12 +240,6 @@ public:
 		// think
 
 		setThinkCallback([this](HL::Protocol::UserCmd& usercmd) {
-			if (!mFirstThink)
-			{
-				initializeGame();
-				mFirstThink = true;
-			}
-
 			auto cmd = lua["Think"]().get<sol::table>();
 			usercmd.msec = cmd["MSec"];
 			usercmd.buttons = cmd["Buttons"];
@@ -261,10 +256,6 @@ public:
 			}
 		});
 
-		setDisconnectCallback([this](const auto& reason) {
-			mFirstThink = false;
-		});
-
 		// frame
 
 		mFramer.setCallback([this] {
@@ -275,7 +266,6 @@ public:
 	auto getMemoryUsed() const { return lua.memory_used(); }
 
 private:
-	bool mFirstThink = false;
 	Common::FrameSystem::Framer mFramer;
 	sol::state lua;
 	BSPFile mBspFile;
@@ -392,7 +382,7 @@ public:
 		mClient->setThinkCallback([this](auto& cmd) {
 			if (!mFirstThink)
 			{
-				initializeGame();
+				initializeGame(); // TODO: not right way since 02.01.2022
 				mFirstThink = true;
 			}
 			if (mThinkCallback)
@@ -443,7 +433,6 @@ public:
 	ReadGameMessageCallback mReadGameMessageCallback = nullptr;
 
 private:
-	bool mFirstThink = false;
 	BSPFile mBspFile;
 };
 
