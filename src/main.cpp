@@ -377,7 +377,9 @@ public:
 		});
 
 		mClient->setResourceRequiredCallback([this](const HL::Protocol::Resource& resource) -> bool {
-			if (resource.name == mClient->getMap())
+			const auto& info = mClient->getServerInfo().value();
+
+			if (resource.name == info.map)
 				return true;
 
 			return false;
@@ -392,7 +394,8 @@ public:
 private:
 	void initializeGame()
 	{
-		mBspFile.loadFromFile(mClient->getGameDir() + "/" + mClient->getMap(), false);
+		const auto& info = mClient->getServerInfo().value();
+		mBspFile.loadFromFile(info.game_dir + "/" + info.map, false);
 	}
 
 public:

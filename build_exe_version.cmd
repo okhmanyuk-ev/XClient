@@ -1,5 +1,5 @@
 mkdir build
 cd build
-cmake ..
+cmake .. -DXCLIENT_DLL=False
 cd ..
 pause

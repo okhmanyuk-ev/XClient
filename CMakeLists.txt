@@ -13,19 +13,16 @@ file(GLOB MAIN_SRC
 	"src/*.h"
 )
 
-# exe version
-
-add_executable(${PROJECT_NAME} 
-	${MAIN_SRC}
-)
-
-# dll version
-
-#add_definitions(-DXCLIENT_DLL)
-
-#add_library(${PROJECT_NAME} SHARED 
-#	${MAIN_SRC}
-#)
+if(XCLIENT_DLL)
+	add_definitions(-DXCLIENT_DLL)
+	add_library(${PROJECT_NAME} SHARED 
+		${MAIN_SRC}
+	)
+else()
+	add_executable(${PROJECT_NAME} 
+		${MAIN_SRC}
+	)
+endif()
 
 # other
 
