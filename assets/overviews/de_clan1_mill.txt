@@ -1,0 +1,15 @@
+// overview description file for de_clan1_mill.bsp
+// by Deni$OK (http://www.dentools.nm.ru/)
+
+global 
+{
+	ZOOM	1.49
+	ORIGIN	512 	1667	-289
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/de_clan1_mill.bmp"
+	HEIGHT	-289
+}

@@ -1,6 +1,5 @@
 #include "ai_client.h"
 #include <HL/utils.h>
-#include "mod_cs.h"
 #include <common/helpers.h>
 
 AiClient::AiClient()
@@ -11,13 +10,6 @@ AiClient::AiClient()
 
 	setThinkCallback([this](HL::Protocol::UserCmd& usercmd) {
 		think(usercmd);
-	});
-
-	setReadGameMessageCallback([this](const std::string& name, void* memory, size_t size) {
-		auto msg = BitBuffer();
-		msg.write(memory, size);
-		msg.toStart();
-		mMod->readMessage(name, msg);
 	});
 
 	setResourceRequiredCallback([this](const HL::Protocol::Resource& resource) -> bool {
@@ -35,11 +27,6 @@ void AiClient::initializeGameEngine()
 	PlayableClient::initializeGameEngine();
 
 	mThinkTime = Clock::Now();
-
-	mMod = std::make_shared<ModCS>();
-	mMod->setGetClientCallback([this]()->HL::BaseClient& {
-		return *this;
-	});
 }
 
 void AiClient::initializeGame()
@@ -73,6 +60,13 @@ void AiClient::think(HL::Protocol::UserCmd& usercmd)
 
 void AiClient::testMove(HL::Protocol::UserCmd& usercmd)
 {
+	if (mMoveTarget.has_value())
+	{
+		lookAt(usercmd, mMoveTarget.value());
+		moveTo(usercmd, mMoveTarget.value());
+		return;
+	}
+
 	HL::Protocol::Entity* nearest_ent = nullptr;
 	float min_distance = 9999.0f;
 	

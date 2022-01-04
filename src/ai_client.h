@@ -2,7 +2,6 @@
 
 #include <HL/playable_client.h>
 #include <HL/bspfile.h>
-#include "mod.h"
 
 class AiClient : public HL::PlayableClient
 {
@@ -25,9 +24,12 @@ protected:
 	void lookAt(HL::Protocol::UserCmd& usercmd, const glm::vec3& origin) const;
 	void lookAt(HL::Protocol::UserCmd& usercmd, const HL::Protocol::Entity& entity) const;
 
+public:
+	void setMoveTarget(std::optional<glm::vec3> value) { mMoveTarget = value; }
+
 private:
 	Clock::TimePoint mThinkTime = Clock::Now();
 	BSPFile mBspFile;
-	std::shared_ptr<Mod> mMod = nullptr;
 	glm::vec3 mPrevViewAngles = { 0.0f, 0.0f, 0.0f };
+	std::optional<glm::vec3> mMoveTarget;
 };
