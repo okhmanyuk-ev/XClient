@@ -1,11 +1,22 @@
 #pragma once
 
-#include <HL/hltv_client.h>
 #include <shared/all.h>
+#include <HL/hltv_client.h>
+#include <HL/gameplay_view_node.h>
 
 namespace XClient
 {
-	class GameplayScreen : public Scene::Tappable<Shared::SceneHelpers::StandardScreen>
+	class GameplayViewNode : public HL::GameplayViewNode
+	{
+	public:
+		GameplayViewNode();
+
+	public:
+		void draw() override;
+		void touch(Touch type, const glm::vec2& pos) override;
+	};
+
+	class GameplayScreen : public Shared::SceneHelpers::StandardScreen
 	{
 	public:
 		GameplayScreen();

@@ -26,6 +26,9 @@ protected:
 
 public:
 	void setMoveTarget(std::optional<glm::vec3> value) { mMoveTarget = value; }
+	const auto& getMoveTarget() const { return mMoveTarget; }
+
+	const auto& getBsp() const { return mBspFile; }
 
 private:
 	Clock::TimePoint mThinkTime = Clock::Now();

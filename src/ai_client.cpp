@@ -62,8 +62,15 @@ void AiClient::testMove(HL::Protocol::UserCmd& usercmd)
 {
 	if (mMoveTarget.has_value())
 	{
-		lookAt(usercmd, mMoveTarget.value());
-		moveTo(usercmd, mMoveTarget.value());
+		auto origin = getClientData().origin;
+		auto move_target = mMoveTarget.value();
+		move_target.z = origin.z;
+
+		if (getDistance(move_target) > 36.0f / 2.0f)
+		{
+			lookAt(usercmd, move_target);
+			moveTo(usercmd, move_target);
+		}
 		return;
 	}
 
