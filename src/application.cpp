@@ -20,7 +20,6 @@ Application::Application() : Shared::Application(PROJECT_NAME, { Flag::Network, 
 	CONSOLE->execute("hud_show_fps 1");
 	CONSOLE->execute("r_vsync 1");
 	//CONSOLE->execute("hud_show_ents 1"); // feel free to uncomment
-	CONSOLE->execute("hud_show_net 1");
 
 	SCENE_MANAGER->switchScreen(std::make_shared<GameplayScreen>());
 
