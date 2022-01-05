@@ -52,6 +52,12 @@ void GameplayViewNode::touch(Touch type, const glm::vec2& pos)
 {
 	HL::GameplayViewNode::touch(type, pos);
 
+	if (type == Touch::End)
+	{
+		CLIENT->setMoveTarget(std::nullopt);
+		return;
+	}
+
 	CLIENT->setMoveTarget(screenToWorld(pos / PLATFORM->getScale()));
 
 	if (type == Touch::Begin)
