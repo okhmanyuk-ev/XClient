@@ -11,7 +11,7 @@ GameplayScreen::GameplayScreen()
 	getContent()->attach(gameplay_view_node);
 
 	setTapCallback([this, gameplay_view_node](const auto& pos) {
-		CLIENT->setMoveTarget(gameplay_view_node->screenToWorld(pos));
+		CLIENT->setMoveTarget(gameplay_view_node->screenToWorld(pos / PLATFORM->getScale()));
 
 		auto circle = std::make_shared<Scene::Circle>();
 		circle->setPivot(0.5f);
