@@ -92,7 +92,7 @@ glm::vec3 AiClient::getFootOrigin() const
 {
 	auto origin = getOrigin();
 
-	if (getClientData().bInDuck != 0)
+	if (isDucking())
 		origin.z -= PlayerOriginZDuck;
 	else
 		origin.z -= PlayerOriginZStand;
@@ -147,6 +147,12 @@ bool AiClient::isOnLadder() const
 	return false; // TODO
 }
 
+bool AiClient::isDucking() const
+{
+	auto flags = getClientData().flags;
+	return flags & FL_DUCKING;
+}
+
 float AiClient::getSpeed() const
 {
 	return glm::length(getClientData().velocity);
@@ -162,9 +168,12 @@ float AiClient::getDistance(const HL::Protocol::Entity& entity) const
 	return getDistance(entity.origin);
 }
 
-void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const
+void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target, bool walk) const
 {
-	const float speed = getClientData().maxspeed;
+	float speed = getClientData().maxspeed;
+
+	if (walk && !isDucking())
+		speed *= WalkSpeedMultiplier;
 
 	auto origin = getOrigin();
 	auto v = target - origin;
@@ -174,21 +183,21 @@ void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const
 	cmd.sidemove = glm::sin(glm::radians(angle)) * speed;
 }
 
-void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity) const
+void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity, bool walk) const
 {
-	moveTo(cmd, entity.origin);
+	moveTo(cmd, entity.origin, walk);
 }
 
-void AiClient::moveFrom(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const
+void AiClient::moveFrom(HL::Protocol::UserCmd& cmd, const glm::vec3& target, bool walk) const
 {
-	moveTo(cmd, target);
+	moveTo(cmd, target, walk);
 	cmd.forwardmove = -cmd.forwardmove;
 	cmd.sidemove = -cmd.sidemove;
 }
 
-void AiClient::moveFrom(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity) const
+void AiClient::moveFrom(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity, bool walk) const
 {
-	moveFrom(cmd, entity.origin);
+	moveFrom(cmd, entity.origin, walk);
 }
 
 void AiClient::lookAt(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const
@@ -232,19 +241,21 @@ AiClient::TraceResult AiClient::traceLine(const glm::vec3& begin, const glm::vec
 
 AiClient::TrivialMoveStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
 {
-	if (getDistance(target) <= PlayerWidth / 2.0f)
+	auto distance = getDistance(target);
+
+	if (distance <= PlayerWidth / 2.0f)
 		return TrivialMoveStatus::Finished;
 
+	bool walk = distance <= PlayerWidth * 2.0f;
+
 	lookAt(cmd, target);
-	moveTo(cmd, target);
+	moveTo(cmd, target, walk);
 
 	const auto foot_origin = getFootOrigin();
 	const glm::vec3 foot_target = { target.x, target.y, foot_origin.z };
 
 	const auto direction = glm::normalize(foot_target - foot_origin);
 	const auto foot_next_pos = foot_origin + (direction * PlayerWidth);
-
-	// find ground pos
 
 	struct Window
 	{

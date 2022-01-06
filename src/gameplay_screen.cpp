@@ -22,23 +22,37 @@ void GameplayViewNode::draw()
 	const auto& clientdata = CLIENT->getClientData();
 	STATS_INDICATE_GROUP("clientdata", "origin", fmt::format("x: {:.0f}, y: {:.0f}, z: {:.0f}", clientdata.origin.x, clientdata.origin.y, clientdata.origin.z));
 	STATS_INDICATE_GROUP("clientdata", "flags", clientdata.flags);
+	STATS_INDICATE_GROUP("clientdata", "maxspeed", clientdata.maxspeed);
+
 
 	auto move_target = CLIENT->getCustomMoveTarget();
 
+	static std::optional<glm::vec3> end_pos;
+	
 	if (!move_target.has_value())
+	{
+		end_pos.reset();
 		return;
+	}
+
+	const auto dTime = FRAME->getTimeDelta();
 
 	auto start_pos = CLIENT->getClientData().origin;
-	auto end_pos = move_target.value();
-	end_pos.z = start_pos.z;
+	
+	if (!end_pos.has_value())
+		end_pos = start_pos;
 
-	auto trace_result = CLIENT->traceLine(start_pos, end_pos);
+	end_pos = Common::Helpers::SmoothValueAssign(end_pos.value(), move_target.value(), dTime);
+
+	end_pos.value().z = start_pos.z;
+
+	auto trace_result = CLIENT->traceLine(start_pos, end_pos.value());
 
 	auto mid_pos = trace_result.endpos;
 
 	auto start_scr = worldToScreen(start_pos);
 	auto mid_scr = worldToScreen(mid_pos);
-	auto end_scr = worldToScreen(end_pos);
+	auto end_scr = worldToScreen(end_pos.value());
 	
 	auto node = IMSCENE->attachTemporaryNode<HL::GenericDrawNode>(*this);
 	node->setStretch(1.0f);
@@ -61,6 +75,9 @@ void GameplayViewNode::draw()
 void GameplayViewNode::touch(Touch type, const glm::vec2& pos)
 {
 	HL::GameplayViewNode::touch(type, pos);
+
+	if (CLIENT->getState() < HL::BaseClient::State::GameStarted)
+		return;
 
 	auto target = screenToWorld(pos / PLATFORM->getScale());
 	CLIENT->setCustomMoveTarget(target);

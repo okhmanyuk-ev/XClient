@@ -15,6 +15,8 @@ private:
 	const float JumpHeight = 41.8f; // if delta Z is less than this, we can jump up on it
 	const float JumpCrouchHeight = 58.0f; // (48) if delta Z is less than or equal to this, we can jumpcrouch up on it
 	const float MaxDistance = 8192.0f;
+	const float WalkSpeedMultiplier = 0.4f;
+	const float UseRadius = 64.0f;
 
 public:
 	AiClient();
@@ -31,13 +33,14 @@ private:
 	bool isVisible(const HL::Protocol::Entity& entity) const;
 	bool isOnGround() const;
 	bool isOnLadder() const;
+	bool isDucking() const;
 	float getSpeed() const;
 	float getDistance(const glm::vec3& target) const;
 	float getDistance(const HL::Protocol::Entity& entity) const;
-	void moveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const;
-	void moveTo(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity) const;
-	void moveFrom(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const;
-	void moveFrom(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity) const;
+	void moveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target, bool walk = false) const;
+	void moveTo(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity, bool walk = false) const;
+	void moveFrom(HL::Protocol::UserCmd& cmd, const glm::vec3& target, bool walk = false) const;
+	void moveFrom(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity, bool walk = false) const;
 	void lookAt(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const;
 	void lookAt(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity) const;
 	void jump();
