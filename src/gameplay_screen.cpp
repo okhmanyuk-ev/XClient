@@ -32,7 +32,7 @@ void GameplayViewNode::draw()
 	auto end_pos = move_target.value();
 	end_pos.z = start_pos.z;
 
-	auto trace_result = CLIENT->getBsp().traceLine(start_pos, end_pos);
+	auto trace_result = CLIENT->traceLine(start_pos, end_pos);
 
 	auto mid_pos = trace_result.endpos;
 

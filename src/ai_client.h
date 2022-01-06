@@ -19,7 +19,7 @@ private:
 public:
 	AiClient();
 
-protected:
+private:
 	void initializeGameEngine() override;
 	void initializeGame() override;
 	void think(HL::Protocol::UserCmd& cmd);
@@ -43,6 +43,17 @@ protected:
 	void jump();
 	void duck();
 
+public:
+	struct TraceResult
+	{
+		glm::vec3 endpos = { 0.0f, 0.0f, 0.0f };
+		float fraction = 0.0f;
+		bool start_solid = false;
+	};
+
+	TraceResult traceLine(const glm::vec3& begin, const glm::vec3& end) const;
+
+private:
 	enum class TrivialMoveStatus
 	{
 		Finished,
@@ -64,7 +75,6 @@ protected:
 public:
 	void setCustomMoveTarget(const glm::vec3& value) { mCustomMoveTarget = value; };
 	const auto& getCustomMoveTarget() const { return mCustomMoveTarget; }
-
 	const auto& getBsp() const { return mBspFile; }
 
 private:

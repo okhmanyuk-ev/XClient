@@ -127,7 +127,7 @@ std::optional<HL::Protocol::Entity*> AiClient::findNearestVisiblePlayerEntity()
 
 bool AiClient::isVisible(const glm::vec3& target) const
 {
-	auto result = mBspFile.traceLine(getOrigin(), target);
+	auto result = traceLine(getOrigin(), target);
 	return result.fraction >= 1.0f;
 }
 
@@ -220,6 +220,16 @@ void AiClient::duck()
 	mWantDuck = true;
 }
 
+AiClient::TraceResult AiClient::traceLine(const glm::vec3& begin, const glm::vec3& end) const
+{
+	TraceResult result;
+	auto r = mBspFile.traceLine(begin, end, false);
+	result.endpos = r.endpos;
+	result.fraction = r.fraction;
+	result.start_solid = r.startsolid;
+	return result;
+}
+
 AiClient::TrivialMoveStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
 {
 	if (getDistance(target) <= PlayerWidth / 2.0f)
@@ -251,9 +261,9 @@ AiClient::TrivialMoveStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, 
 		auto start_pos = foot_next_pos + glm::vec3{ 0.0f, 0.0f, ground_search_z_offset };
 		auto end_pos = start_pos - glm::vec3{ 0.0f, 0.0f, MaxDistance };
 
-		auto trace = mBspFile.traceLine(start_pos, end_pos);
+		auto trace = traceLine(start_pos, end_pos);
 
-		if (!trace.startsolid)
+		if (!trace.start_solid)
 		{
 			auto ground = trace.endpos;
 			auto step_height = ground.z - foot_next_pos.z;
@@ -261,7 +271,7 @@ AiClient::TrivialMoveStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, 
 			if (step_height > JumpCrouchHeight)
 				break;
 
-			trace = mBspFile.traceLine(ground, ground + glm::vec3{ 0.0f, 0.0f, MaxDistance });
+			trace = traceLine(ground, ground + glm::vec3{ 0.0f, 0.0f, MaxDistance });
 			auto roof = trace.endpos;
 			auto window_height = glm::distance(ground, roof);
 			if (window_height >= PlayerHeightDuck)
