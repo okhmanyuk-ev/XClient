@@ -77,45 +77,10 @@ void AiClient::think(HL::Protocol::UserCmd& cmd)
 
 void AiClient::testMove(HL::Protocol::UserCmd& cmd)
 {
-	if (mMoveTarget.has_value())
-	{
-		auto target = mMoveTarget.value();
-		target.z = getOrigin().z;
-		trivialMoveTo(cmd, target);
-		return;
-	}
-
-	HL::Protocol::Entity* nearest_ent = nullptr;
-	float min_distance = 9999.0f;
-	
-	for (const auto& [index, entity] : getEntities())
-	{
-		if (!isPlayerIndex(index))
-			continue;
-
-		if (!isVisible(*entity))
-			continue;
-
-		auto distance = getDistance(*entity);
-
-		if (distance < min_distance)
-		{
-			min_distance = distance;
-			nearest_ent = entity;
-		}
-	}
-
-	if (nearest_ent == nullptr)
+	if (avoidOtherPlayers(cmd) == AvoidOtherPlayersStatus::Processing)
 		return;
 
-	lookAt(cmd, *nearest_ent);
-
-	auto distance = getDistance(*nearest_ent);
-
-	if (distance > 200.0f)
-		moveTo(cmd, *nearest_ent);
-	else if (distance < 150.0f)
-		moveFrom(cmd, *nearest_ent);
+	trivialMoveToCustomTarget(cmd);
 }
 
 glm::vec3 AiClient::getOrigin() const
@@ -133,6 +98,31 @@ glm::vec3 AiClient::getFootOrigin() const
 		origin.z -= PlayerOriginZStand;
 
 	return origin;
+}
+
+std::optional<HL::Protocol::Entity*> AiClient::findNearestVisiblePlayerEntity()
+{
+	std::optional<HL::Protocol::Entity*> result;
+	auto min_distance = MaxDistance;
+
+	for (const auto& [index, entity] : getEntities())
+	{
+		if (!isPlayerIndex(index))
+			continue;
+
+		if (!isVisible(*entity))
+			continue;
+
+		auto distance = getDistance(*entity);
+
+		if (distance < min_distance)
+		{
+			min_distance = distance;
+			result = entity;
+		}
+	}
+
+	return result;
 }
 
 bool AiClient::isVisible(const glm::vec3& target) const
@@ -157,6 +147,11 @@ bool AiClient::isOnLadder() const
 	return false; // TODO
 }
 
+float AiClient::getSpeed() const
+{
+	return glm::length(getClientData().velocity);
+}
+
 float AiClient::getDistance(const glm::vec3& target) const
 {
 	return glm::distance(getOrigin(), target);
@@ -169,14 +164,14 @@ float AiClient::getDistance(const HL::Protocol::Entity& entity) const
 
 void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const
 {
-	const float Speed = 250.0f;
+	const float speed = getClientData().maxspeed;
 
 	auto origin = getOrigin();
 	auto v = target - origin;
 	auto angle = cmd.viewangles.y - glm::degrees(glm::atan(v.y, v.x));
 
-	cmd.forwardmove = glm::cos(glm::radians(angle)) * Speed;
-	cmd.sidemove = glm::sin(glm::radians(angle)) * Speed;
+	cmd.forwardmove = glm::cos(glm::radians(angle)) * speed;
+	cmd.sidemove = glm::sin(glm::radians(angle)) * speed;
 }
 
 void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity) const
@@ -225,10 +220,10 @@ void AiClient::duck()
 	mWantDuck = true;
 }
 
-void AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
+AiClient::TrivialMoveStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
 {
 	if (getDistance(target) <= PlayerWidth / 2.0f)
-		return; // target reached
+		return TrivialMoveStatus::Finished;
 
 	lookAt(cmd, target);
 	moveTo(cmd, target);
@@ -261,6 +256,11 @@ void AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target
 		if (!trace.startsolid)
 		{
 			auto ground = trace.endpos;
+			auto step_height = ground.z - foot_next_pos.z;
+
+			if (step_height > JumpCrouchHeight)
+				break;
+
 			trace = mBspFile.traceLine(ground, ground + glm::vec3{ 0.0f, 0.0f, MaxDistance });
 			auto roof = trace.endpos;
 			auto window_height = glm::distance(ground, roof);
@@ -278,12 +278,14 @@ void AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target
 	}
 
 	if (!window.has_value())
-		return;
+		return TrivialMoveStatus::Processing;
 
 	auto ground_next_pos = window.value().ground;
 	auto roof_next_pos = window.value().roof;
+	
+	auto step_height = ground_next_pos.z - foot_next_pos.z;
 
-	if (ground_next_pos.z - foot_next_pos.z > StepHeight)
+	if (step_height > StepHeight)
 	{
 		jump();
 		duck();
@@ -292,4 +294,43 @@ void AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target
 	{
 		duck();
 	}
+
+	return TrivialMoveStatus::Processing;
+}
+
+AiClient::AvoidOtherPlayersStatus AiClient::avoidOtherPlayers(HL::Protocol::UserCmd& cmd)
+{
+	auto nearest_ent = findNearestVisiblePlayerEntity();
+
+	if (!nearest_ent.has_value())
+		return AvoidOtherPlayersStatus::Finished;
+
+	auto distance = getDistance(*nearest_ent.value());
+
+	if (distance >= PlayerWidth * 1.5f)
+		return AvoidOtherPlayersStatus::Finished;
+
+	lookAt(cmd, *nearest_ent.value());
+	moveFrom(cmd, *nearest_ent.value());
+	return AvoidOtherPlayersStatus::Processing;
+}
+
+AiClient::TrivialMoveStatus AiClient::trivialMoveToCustomTarget(HL::Protocol::UserCmd& cmd)
+{
+	if (!mCustomMoveTarget.has_value())
+		return TrivialMoveStatus::Finished;
+	
+	auto target = mCustomMoveTarget.value();
+	target.z = getOrigin().z;
+
+	if (trivialMoveTo(cmd, target) == TrivialMoveStatus::Finished)
+	{
+		if (getSpeed() == 0.0f)
+		{
+			mCustomMoveTarget.reset();
+			return TrivialMoveStatus::Finished;
+		}
+	}
+
+	return TrivialMoveStatus::Processing;
 }

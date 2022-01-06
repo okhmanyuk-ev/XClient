@@ -23,7 +23,7 @@ void GameplayViewNode::draw()
 	STATS_INDICATE_GROUP("clientdata", "origin", fmt::format("x: {:.0f}, y: {:.0f}, z: {:.0f}", clientdata.origin.x, clientdata.origin.y, clientdata.origin.z));
 	STATS_INDICATE_GROUP("clientdata", "flags", clientdata.flags);
 
-	auto move_target = CLIENT->getMoveTarget();
+	auto move_target = CLIENT->getCustomMoveTarget();
 
 	if (!move_target.has_value())
 		return;
@@ -50,20 +50,20 @@ void GameplayViewNode::draw()
 			{ { end_scr, 0.0f }, { Graphics::Color::Red, 1.0f } }
 		});
 	});
+
+	auto circle = IMSCENE->attachTemporaryNode<Scene::Circle>(*this);
+	circle->setPosition(end_scr);
+	circle->setPivot(0.5f);
+	circle->setColor(trace_result.fraction < 1.0f ? Graphics::Color::Red : Graphics::Color::Lime);
+	circle->setRadius(4.0f);
 }
 
 void GameplayViewNode::touch(Touch type, const glm::vec2& pos)
 {
 	HL::GameplayViewNode::touch(type, pos);
 
-	if (type == Touch::End)
-	{
-		CLIENT->setMoveTarget(std::nullopt);
-		return;
-	}
-
 	auto target = screenToWorld(pos / PLATFORM->getScale());
-	CLIENT->setMoveTarget(target);
+	CLIENT->setCustomMoveTarget(target);
 
 	if (type == Touch::Begin)
 	{
