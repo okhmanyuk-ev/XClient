@@ -14,6 +14,7 @@ private:
 	const float StepHeight = 18.0f; // if delta Z is greater than this, we have to jump to get up
 	const float JumpHeight = 41.8f; // if delta Z is less than this, we can jump up on it
 	const float JumpCrouchHeight = 58.0f; // (48) if delta Z is less than or equal to this, we can jumpcrouch up on it
+	const float MaxDistance = 8192.0f;
 
 public:
 	AiClient();

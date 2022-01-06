@@ -254,14 +254,14 @@ void AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target
 	while (true)
 	{
 		auto start_pos = foot_next_pos + glm::vec3{ 0.0f, 0.0f, ground_search_z_offset };
-		auto end_pos = start_pos - glm::vec3{ 0.0f, 0.0f, 8192.0f };
+		auto end_pos = start_pos - glm::vec3{ 0.0f, 0.0f, MaxDistance };
 
 		auto trace = mBspFile.traceLine(start_pos, end_pos);
 
 		if (!trace.startsolid)
 		{
 			auto ground = trace.endpos;
-			trace = mBspFile.traceLine(ground, ground + glm::vec3{ 0.0f, 0.0f, 8192.0f });
+			trace = mBspFile.traceLine(ground, ground + glm::vec3{ 0.0f, 0.0f, MaxDistance });
 			auto roof = trace.endpos;
 			auto window_height = glm::distance(ground, roof);
 			if (window_height >= PlayerHeightDuck)
@@ -292,6 +292,4 @@ void AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target
 	{
 		duck();
 	}
-
-	moveTo(cmd, target);
 }
