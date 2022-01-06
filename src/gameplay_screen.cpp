@@ -19,6 +19,10 @@ void GameplayViewNode::draw()
 {
 	HL::GameplayViewNode::draw();
 
+	const auto& clientdata = CLIENT->getClientData();
+	STATS_INDICATE_GROUP("clientdata", "origin", fmt::format("x: {:.0f}, y: {:.0f}, z: {:.0f}", clientdata.origin.x, clientdata.origin.y, clientdata.origin.z));
+	STATS_INDICATE_GROUP("clientdata", "flags", clientdata.flags);
+
 	auto move_target = CLIENT->getMoveTarget();
 
 	if (!move_target.has_value())
@@ -58,7 +62,8 @@ void GameplayViewNode::touch(Touch type, const glm::vec2& pos)
 		return;
 	}
 
-	CLIENT->setMoveTarget(screenToWorld(pos / PLATFORM->getScale()));
+	auto target = screenToWorld(pos / PLATFORM->getScale());
+	CLIENT->setMoveTarget(target);
 
 	if (type == Touch::Begin)
 	{

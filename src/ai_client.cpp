@@ -8,8 +8,8 @@ AiClient::AiClient()
 
 	setCertificate({ 1, 2, 3, 4 });
 
-	setThinkCallback([this](HL::Protocol::UserCmd& usercmd) {
-		think(usercmd);
+	setThinkCallback([this](HL::Protocol::UserCmd& cmd) {
+		think(cmd);
 	});
 
 	setResourceRequiredCallback([this](const HL::Protocol::Resource& resource) -> bool {
@@ -40,37 +40,48 @@ void AiClient::initializeGame()
 	CONSOLE->execute("delay 2 'cmd \"joinclass 6\"'");
 }
 
-void AiClient::think(HL::Protocol::UserCmd& usercmd)
+void AiClient::think(HL::Protocol::UserCmd& cmd)
 {
 	auto now = Clock::Now();
 	auto delta = now - mThinkTime;
 	mThinkTime = now;
 
-	usercmd.msec = Clock::ToMilliseconds(delta);
-	usercmd.forwardmove = 0.0f;
-	usercmd.sidemove = 0.0f;
-	usercmd.upmove = 0.0f;
-	usercmd.buttons = 0;
-	usercmd.viewangles = mPrevViewAngles;
+	cmd.msec = Clock::ToMilliseconds(delta);
+	cmd.forwardmove = 0.0f;
+	cmd.sidemove = 0.0f;
+	cmd.upmove = 0.0f;
+	cmd.buttons = 0;
+	cmd.viewangles = mPrevViewAngles;
 
-	testMove(usercmd);
+	testMove(cmd);
 
-	mPrevViewAngles = usercmd.viewangles;
+	if (mWantJump && (isOnGround() || isOnLadder()))
+	{
+		cmd.buttons |= IN_JUMP;
+	}
+
+	if (mWantDuck)
+	{
+		cmd.buttons |= IN_DUCK;
+	}
+
+	if (isOnGround() || isOnLadder())
+	{
+		mWantDuck = false;
+	}
+
+	mWantJump = false;
+
+	mPrevViewAngles = cmd.viewangles;
 }
 
-void AiClient::testMove(HL::Protocol::UserCmd& usercmd)
+void AiClient::testMove(HL::Protocol::UserCmd& cmd)
 {
 	if (mMoveTarget.has_value())
 	{
-		auto origin = getClientData().origin;
-		auto move_target = mMoveTarget.value();
-		move_target.z = origin.z;
-
-		if (getDistance(move_target) > 36.0f / 2.0f)
-		{
-			lookAt(usercmd, move_target);
-			moveTo(usercmd, move_target);
-		}
+		auto target = mMoveTarget.value();
+		target.z = getOrigin().z;
+		trivialMoveTo(cmd, target);
 		return;
 	}
 
@@ -97,20 +108,36 @@ void AiClient::testMove(HL::Protocol::UserCmd& usercmd)
 	if (nearest_ent == nullptr)
 		return;
 
-	lookAt(usercmd, *nearest_ent);
+	lookAt(cmd, *nearest_ent);
 
 	auto distance = getDistance(*nearest_ent);
 
 	if (distance > 200.0f)
-		moveTo(usercmd, *nearest_ent);
+		moveTo(cmd, *nearest_ent);
 	else if (distance < 150.0f)
-		moveFrom(usercmd, *nearest_ent);
+		moveFrom(cmd, *nearest_ent);
 }
 
-bool AiClient::isVisible(const glm::vec3& origin) const
+glm::vec3 AiClient::getOrigin() const
 {
-	auto my_origin = getClientData().origin;
-	auto result = mBspFile.traceLine(my_origin, origin);
+	return getClientData().origin;
+}
+
+glm::vec3 AiClient::getFootOrigin() const
+{
+	auto origin = getOrigin();
+
+	if (getClientData().bInDuck != 0)
+		origin.z -= PlayerOriginZDuck;
+	else
+		origin.z -= PlayerOriginZStand;
+
+	return origin;
+}
+
+bool AiClient::isVisible(const glm::vec3& target) const
+{
+	auto result = mBspFile.traceLine(getOrigin(), target);
 	return result.fraction >= 1.0f;
 }
 
@@ -119,10 +146,20 @@ bool AiClient::isVisible(const HL::Protocol::Entity& entity) const
 	return isVisible(entity.origin);
 }
 
-float AiClient::getDistance(const glm::vec3& origin) const
+bool AiClient::isOnGround() const
 {
-	auto my_origin = getClientData().origin;
-	return glm::distance(my_origin, origin);
+	auto flags = getClientData().flags;
+	return flags & FL_ONGROUND;
+}
+
+bool AiClient::isOnLadder() const
+{
+	return false; // TODO
+}
+
+float AiClient::getDistance(const glm::vec3& target) const
+{
+	return glm::distance(getOrigin(), target);
 }
 
 float AiClient::getDistance(const HL::Protocol::Entity& entity) const
@@ -130,49 +167,131 @@ float AiClient::getDistance(const HL::Protocol::Entity& entity) const
 	return getDistance(entity.origin);
 }
 
-void AiClient::moveTo(HL::Protocol::UserCmd& usercmd, const glm::vec3& origin) const
+void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const
 {
 	const float Speed = 250.0f;
 
-	auto my_origin = getClientData().origin;
-	auto v = origin - my_origin;
-	auto angle = usercmd.viewangles.y - glm::degrees(glm::atan(v.y, v.x));
+	auto origin = getOrigin();
+	auto v = target - origin;
+	auto angle = cmd.viewangles.y - glm::degrees(glm::atan(v.y, v.x));
 
-	usercmd.forwardmove = glm::cos(glm::radians(angle)) * Speed;
-	usercmd.sidemove = glm::sin(glm::radians(angle)) * Speed;
+	cmd.forwardmove = glm::cos(glm::radians(angle)) * Speed;
+	cmd.sidemove = glm::sin(glm::radians(angle)) * Speed;
 }
 
-void AiClient::moveTo(HL::Protocol::UserCmd& usercmd, const HL::Protocol::Entity& entity) const
+void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity) const
 {
-	moveTo(usercmd, entity.origin);
+	moveTo(cmd, entity.origin);
 }
 
-void AiClient::moveFrom(HL::Protocol::UserCmd& usercmd, const glm::vec3& origin) const
+void AiClient::moveFrom(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const
 {
-	moveTo(usercmd, origin);
-	usercmd.forwardmove = -usercmd.forwardmove;
-	usercmd.sidemove = -usercmd.sidemove;
+	moveTo(cmd, target);
+	cmd.forwardmove = -cmd.forwardmove;
+	cmd.sidemove = -cmd.sidemove;
 }
 
-void AiClient::moveFrom(HL::Protocol::UserCmd& usercmd, const HL::Protocol::Entity& entity) const
+void AiClient::moveFrom(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity) const
 {
-	moveFrom(usercmd, entity.origin);
+	moveFrom(cmd, entity.origin);
 }
 
-void AiClient::lookAt(HL::Protocol::UserCmd& usercmd, const glm::vec3& origin) const
+void AiClient::lookAt(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const
 {
-	auto v = origin - getClientData().origin;
+	auto origin = getOrigin();
+	auto v = target - origin;
 	glm::vec3 viewangles;
 	viewangles.x = (float)-glm::degrees(glm::atan(v.z, glm::sqrt(v.x * v.x + v.y * v.y))); // TODO: glm dot?
 	viewangles.y = (float)glm::degrees(glm::atan(v.y, v.x));
 	viewangles.z = 0.0f;
 
-	usercmd.viewangles.x = Common::Helpers::SmoothValueAssign(usercmd.viewangles.x, viewangles.x, Clock::FromMilliseconds(usercmd.msec));
-	usercmd.viewangles.y = glm::degrees(Common::Helpers::SmoothRotationAssign(glm::radians(usercmd.viewangles.y), glm::radians(viewangles.y), Clock::FromMilliseconds(usercmd.msec)));
-	usercmd.viewangles.z = 0.0f;
+	cmd.viewangles.x = Common::Helpers::SmoothValueAssign(cmd.viewangles.x, viewangles.x, Clock::FromMilliseconds(cmd.msec));
+	cmd.viewangles.y = glm::degrees(Common::Helpers::SmoothRotationAssign(glm::radians(cmd.viewangles.y), glm::radians(viewangles.y), Clock::FromMilliseconds(cmd.msec)));
+	cmd.viewangles.z = 0.0f;
 }
 
-void AiClient::lookAt(HL::Protocol::UserCmd& usercmd, const HL::Protocol::Entity& entity) const
+void AiClient::lookAt(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity) const
 {
-	lookAt(usercmd, entity.origin);
+	lookAt(cmd, entity.origin);
+}
+
+void AiClient::jump()
+{
+	mWantJump = true;
+}
+
+void AiClient::duck()
+{
+	mWantDuck = true;
+}
+
+void AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
+{
+	if (getDistance(target) <= PlayerWidth / 2.0f)
+		return; // target reached
+
+	lookAt(cmd, target);
+	moveTo(cmd, target);
+
+	const auto foot_origin = getFootOrigin();
+	const glm::vec3 foot_target = { target.x, target.y, foot_origin.z };
+
+	const auto direction = glm::normalize(foot_target - foot_origin);
+	const auto foot_next_pos = foot_origin + (direction * PlayerWidth);
+
+	// find ground pos
+
+	struct Window
+	{
+		glm::vec3 ground;
+		glm::vec3 roof;
+	};
+
+	std::optional<Window> window;
+
+	float ground_search_z_offset = 0.0f;
+
+	while (true)
+	{
+		auto start_pos = foot_next_pos + glm::vec3{ 0.0f, 0.0f, ground_search_z_offset };
+		auto end_pos = start_pos - glm::vec3{ 0.0f, 0.0f, 8192.0f };
+
+		auto trace = mBspFile.traceLine(start_pos, end_pos);
+
+		if (!trace.startsolid)
+		{
+			auto ground = trace.endpos;
+			trace = mBspFile.traceLine(ground, ground + glm::vec3{ 0.0f, 0.0f, 8192.0f });
+			auto roof = trace.endpos;
+			auto window_height = glm::distance(ground, roof);
+			if (window_height >= PlayerHeightDuck)
+			{
+				window = Window{ ground, roof };
+				break;
+			}
+		}
+
+		if (ground_search_z_offset > JumpCrouchHeight)
+			break;
+
+		ground_search_z_offset += PlayerHeightDuck;
+	}
+
+	if (!window.has_value())
+		return;
+
+	auto ground_next_pos = window.value().ground;
+	auto roof_next_pos = window.value().roof;
+
+	if (ground_next_pos.z - foot_next_pos.z > StepHeight)
+	{
+		jump();
+		duck();
+	}
+	else if (glm::distance(ground_next_pos, roof_next_pos) < PlayerHeightStand)
+	{
+		duck();
+	}
+
+	moveTo(cmd, target);
 }
