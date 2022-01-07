@@ -8,23 +8,23 @@ GameplayViewNode::GameplayViewNode() : HL::GameplayViewNode(CLIENT)
 	setTouchable(true);
 }
 
-GameplayScreen::GameplayScreen()
-{
-	auto gameplay_view_node = std::make_shared<GameplayViewNode>();
-	gameplay_view_node->setStretch(1.0f);
-	getContent()->attach(gameplay_view_node);
-}
-
 void GameplayViewNode::draw()
 {
 	HL::GameplayViewNode::draw();
+
+	if (CLIENT->getState() != HL::BaseClient::State::GameStarted)
+		return;
 
 	const auto& clientdata = CLIENT->getClientData();
 	STATS_INDICATE_GROUP("clientdata", "origin", fmt::format("{:.0f} {:.0f} {:.0f}", clientdata.origin.x, clientdata.origin.y, clientdata.origin.z));
 	STATS_INDICATE_GROUP("clientdata", "flags", clientdata.flags);
 	STATS_INDICATE_GROUP("clientdata", "maxspeed", fmt::format("{:.0f}", clientdata.maxspeed));
 
+	drawCustomMoveTarget();
+}
 
+void GameplayViewNode::drawCustomMoveTarget()
+{
 	auto move_target = CLIENT->getCustomMoveTarget();
 
 	static std::optional<glm::vec3> end_pos;
@@ -101,5 +101,63 @@ void GameplayViewNode::touch(Touch type, const glm::vec2& pos)
 			),
 			Actions::Collection::Kill(circle)
 		));
+	}
+}
+
+GameplayScreen::GameplayScreen()
+{
+	//
+}
+
+void GameplayScreen::draw()
+{
+	Shared::SceneHelpers::StandardScreen::draw();
+
+	auto gameplay_holder = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::SafeArea>(*getContent());
+	auto gui_holder = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::SafeArea>(*getContent());
+
+	auto state = CLIENT->getState();
+	auto dTime = FRAME->getTimeDelta();
+
+	if (state == HL::BaseClient::State::GameStarted)
+	{
+		auto gameplay_view = IMSCENE->attachTemporaryNode<GameplayViewNode>(*gameplay_holder);
+		gameplay_view->setStretch(1.0f);
+	}
+	else if (state != HL::BaseClient::State::Disconnected)
+	{
+		auto label = IMSCENE->attachTemporaryNode<Scene::Label>(*gameplay_holder);
+		label->setText("LOADING...");
+		label->setFontSize(32.0f);
+		label->setAnchor(0.5f);
+		label->setPivot(0.5f);
+	}
+
+	if (state == HL::BaseClient::State::Disconnected)
+	{
+		auto button = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>(*gui_holder);
+		button->getLabel()->setText("CONNECT");
+		button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 18.0f, dTime));
+		button->setSize(Common::Helpers::SmoothValueAssign(button->getSize(), { 192.0f, 48.0f }, dTime));
+		button->setAnchor(Common::Helpers::SmoothValueAssign(button->getAnchor(), { 0.5f, 0.5f }, dTime));
+		button->setPivot(Common::Helpers::SmoothValueAssign(button->getPivot(), { 0.5f, 0.5f }, dTime));
+		button->setRounding(0.5f);
+		button->setClickCallback([] {
+			CONSOLE->execute("connect 192.168.0.106:27015");
+		});
+	}
+	else
+	{
+		auto button = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>(*gui_holder);
+		button->getLabel()->setText("DISCONNECT");
+		button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 10.0f, dTime));
+		button->setSize(Common::Helpers::SmoothValueAssign(button->getSize(), { 96.0f, 24.0f }, dTime));
+		button->setAnchor(Common::Helpers::SmoothValueAssign(button->getAnchor(), { 1.0f, 0.0f }, dTime));
+		button->setPivot(Common::Helpers::SmoothValueAssign(button->getPivot(), { 1.0f, 0.0f }, dTime));
+		button->setPosition(Common::Helpers::SmoothValueAssign(button->getPosition(), { -8.0f, 8.0f }, dTime));
+		button->setRounding(0.5f);
+		button->setClickCallback([] {
+			CONSOLE->execute("disconnect");
+		});	
 	}
 }

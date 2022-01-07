@@ -4,8 +4,6 @@
 
 AiClient::AiClient()
 {
-	CONSOLE->execute("connect 127.0.0.1");
-
 	setCertificate({ 1, 2, 3, 4 });
 
 	setThinkCallback([this](HL::Protocol::UserCmd& cmd) {
