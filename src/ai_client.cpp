@@ -191,6 +191,7 @@ void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target, bool 
 
 	cmd.forwardmove = glm::cos(glm::radians(angle)) * speed;
 	cmd.sidemove = glm::sin(glm::radians(angle)) * speed;
+	cmd.buttons |= IN_FORWARD; // TODO: this is for ladders, it seems we should refactor moveTo approach
 }
 
 void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity, bool walk) const
