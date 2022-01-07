@@ -182,6 +182,9 @@ void AiClient::moveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target, bool 
 {
 	float speed = getClientData().maxspeed;
 
+	if (speed <= 0.0f)
+		speed = getMoveVars().value().max_speed;
+
 	if (walk && !isDucking())
 		speed *= WalkSpeedMultiplier;
 
