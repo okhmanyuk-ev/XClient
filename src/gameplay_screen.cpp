@@ -20,9 +20,9 @@ void GameplayViewNode::draw()
 	HL::GameplayViewNode::draw();
 
 	const auto& clientdata = CLIENT->getClientData();
-	STATS_INDICATE_GROUP("clientdata", "origin", fmt::format("x: {:.0f}, y: {:.0f}, z: {:.0f}", clientdata.origin.x, clientdata.origin.y, clientdata.origin.z));
+	STATS_INDICATE_GROUP("clientdata", "origin", fmt::format("{:.0f} {:.0f} {:.0f}", clientdata.origin.x, clientdata.origin.y, clientdata.origin.z));
 	STATS_INDICATE_GROUP("clientdata", "flags", clientdata.flags);
-	STATS_INDICATE_GROUP("clientdata", "maxspeed", clientdata.maxspeed);
+	STATS_INDICATE_GROUP("clientdata", "maxspeed", fmt::format("{:.0f}", clientdata.maxspeed));
 
 
 	auto move_target = CLIENT->getCustomMoveTarget();

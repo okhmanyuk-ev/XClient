@@ -17,6 +17,7 @@ private:
 	const float MaxDistance = 8192.0f;
 	const float WalkSpeedMultiplier = 0.4f;
 	const float UseRadius = 64.0f;
+	const float JumpCooldownSeconds = 1.0f; // we should not bunnyhopping, because next jumps are not high
 
 public:
 	AiClient();
@@ -25,7 +26,7 @@ private:
 	void initializeGameEngine() override;
 	void initializeGame() override;
 	void think(HL::Protocol::UserCmd& cmd);
-	void testMove(HL::Protocol::UserCmd& cmd);
+	void movement(HL::Protocol::UserCmd& cmd);
 	glm::vec3 getOrigin() const;
 	glm::vec3 getFootOrigin() const;
 	std::optional<HL::Protocol::Entity*> findNearestVisiblePlayerEntity();
@@ -34,6 +35,7 @@ private:
 	bool isOnGround() const;
 	bool isOnLadder() const;
 	bool isDucking() const;
+	bool isTired() const;
 	float getSpeed() const;
 	float getDistance(const glm::vec3& target) const;
 	float getDistance(const HL::Protocol::Entity& entity) const;
@@ -43,7 +45,7 @@ private:
 	void moveFrom(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity, bool walk = false) const;
 	void lookAt(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const;
 	void lookAt(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& entity) const;
-	void jump();
+	void jump(bool duck = false);
 	void duck();
 
 public:
@@ -87,4 +89,5 @@ private:
 	std::optional<glm::vec3> mCustomMoveTarget;
 	bool mWantJump = false;
 	bool mWantDuck = false;
+	Clock::TimePoint mLastAirTime = Clock::Now();
 };

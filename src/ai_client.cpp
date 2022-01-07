@@ -53,7 +53,7 @@ void AiClient::think(HL::Protocol::UserCmd& cmd)
 	cmd.buttons = 0;
 	cmd.viewangles = mPrevViewAngles;
 
-	testMove(cmd);
+	movement(cmd);
 
 	if (mWantJump && (isOnGround() || isOnLadder()))
 	{
@@ -73,9 +73,14 @@ void AiClient::think(HL::Protocol::UserCmd& cmd)
 	mWantJump = false;
 
 	mPrevViewAngles = cmd.viewangles;
+
+	if (!isOnGround())
+	{
+		mLastAirTime = Clock::Now();
+	}
 }
 
-void AiClient::testMove(HL::Protocol::UserCmd& cmd)
+void AiClient::movement(HL::Protocol::UserCmd& cmd)
 {
 	if (avoidOtherPlayers(cmd) == AvoidOtherPlayersStatus::Processing)
 		return;
@@ -153,6 +158,11 @@ bool AiClient::isDucking() const
 	return flags & FL_DUCKING;
 }
 
+bool AiClient::isTired() const
+{
+	return Clock::Now() - mLastAirTime <= Clock::FromSeconds(JumpCooldownSeconds);
+}
+
 float AiClient::getSpeed() const
 {
 	return glm::length(getClientData().velocity);
@@ -219,9 +229,15 @@ void AiClient::lookAt(HL::Protocol::UserCmd& cmd, const HL::Protocol::Entity& en
 	lookAt(cmd, entity.origin);
 }
 
-void AiClient::jump()
+void AiClient::jump(bool duck)
 {
+	if (isTired())
+		return;
+
 	mWantJump = true;
+
+	if (duck)
+		mWantDuck = true;
 }
 
 void AiClient::duck()
@@ -308,8 +324,7 @@ AiClient::TrivialMoveStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, 
 
 	if (step_height > StepHeight)
 	{
-		jump();
-		duck();
+		jump(true);
 	}
 	else if (glm::distance(ground_next_pos, roof_next_pos) < PlayerHeightStand)
 	{
