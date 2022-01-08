@@ -2,6 +2,27 @@
 #include <HL/utils.h>
 #include <common/helpers.h>
 
+std::optional<std::shared_ptr<NavMesh::Area>> NavMesh::getArea(const glm::vec3& pos) const
+{
+	return std::nullopt;
+}
+
+NavMesh::Chain NavMesh::buildChain(const glm::vec3& start, const glm::vec3& end) const
+{
+	return {};
+}
+
+void NavMesh::addArea(Area area)
+{
+	mAreas.insert({ mAreaIndex, area });
+	mAreaIndex += 1;
+}
+
+bool NavMesh::Area::isContainPoint(const glm::vec3& value) const
+{
+	return false;
+}
+
 AiClient::AiClient()
 {
 	setCertificate({ 1, 2, 3, 4 });
@@ -80,10 +101,10 @@ void AiClient::think(HL::Protocol::UserCmd& cmd)
 
 void AiClient::movement(HL::Protocol::UserCmd& cmd)
 {
-	if (avoidOtherPlayers(cmd) == AvoidOtherPlayersStatus::Processing)
+	if (avoidOtherPlayers(cmd) == MovementStatus::Processing)
 		return;
 
-	trivialMoveToCustomTarget(cmd);
+	moveToCustomTarget(cmd);
 }
 
 glm::vec3 AiClient::getOrigin() const
@@ -101,6 +122,30 @@ glm::vec3 AiClient::getFootOrigin() const
 		origin.z -= PlayerOriginZStand;
 
 	return origin;
+}
+
+std::optional<glm::vec3> AiClient::getGroundFromOrigin(const glm::vec3& origin) const
+{
+	auto start_pos = origin;
+	auto end_pos = start_pos - glm::vec3{ 0.0f, 0.0f, MaxDistance };
+	auto trace = traceLine(start_pos, end_pos);
+
+	if (trace.start_solid)
+		return std::nullopt;
+
+	return trace.endpos;
+}
+
+std::optional<glm::vec3> AiClient::getRoofFromOrigin(const glm::vec3& origin) const
+{
+	auto start_pos = origin;
+	auto end_pos = start_pos + glm::vec3{ 0.0f, 0.0f, MaxDistance };
+	auto trace = traceLine(start_pos, end_pos);
+
+	if (trace.start_solid)
+		return std::nullopt;
+
+	return trace.endpos;
 }
 
 std::optional<HL::Protocol::Entity*> AiClient::findNearestVisiblePlayerEntity()
@@ -257,12 +302,12 @@ AiClient::TraceResult AiClient::traceLine(const glm::vec3& begin, const glm::vec
 	return result;
 }
 
-AiClient::TrivialMoveStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
+AiClient::MovementStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
 {
 	auto distance = getDistance(target);
 
 	if (distance <= PlayerWidth / 2.0f)
-		return TrivialMoveStatus::Finished;
+		return MovementStatus::Finished;
 
 	bool walk = distance <= PlayerWidth * 2.0f;
 
@@ -283,41 +328,37 @@ AiClient::TrivialMoveStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, 
 
 	std::optional<Window> window;
 
-	float ground_search_z_offset = 0.0f;
+	float search_z_offset = 0.0f;
 
 	while (true)
 	{
-		auto start_pos = foot_next_pos + glm::vec3{ 0.0f, 0.0f, ground_search_z_offset };
-		auto end_pos = start_pos - glm::vec3{ 0.0f, 0.0f, MaxDistance };
+		auto search_origin = foot_next_pos + glm::vec3{ 0.0f, 0.0f, search_z_offset };
+		auto ground = getGroundFromOrigin(search_origin);
 
-		auto trace = traceLine(start_pos, end_pos);
-
-		if (!trace.start_solid)
+		if (ground.has_value())
 		{
-			auto ground = trace.endpos;
-			auto step_height = ground.z - foot_next_pos.z;
+			auto step_height = ground.value().z - foot_next_pos.z;
 
 			if (step_height > JumpCrouchHeight)
 				break;
 
-			trace = traceLine(ground, ground + glm::vec3{ 0.0f, 0.0f, MaxDistance });
-			auto roof = trace.endpos;
-			auto window_height = glm::distance(ground, roof);
+			auto roof = getRoofFromOrigin(search_origin);
+			auto window_height = glm::distance(ground.value(), roof.value());
 			if (window_height >= PlayerHeightDuck)
 			{
-				window = Window{ ground, roof };
+				window = Window{ ground.value(), roof.value() };
 				break;
 			}
 		}
 
-		if (ground_search_z_offset > JumpCrouchHeight)
+		if (search_z_offset > JumpCrouchHeight)
 			break;
 
-		ground_search_z_offset += PlayerHeightDuck;
+		search_z_offset += PlayerHeightDuck;
 	}
 
 	if (!window.has_value())
-		return TrivialMoveStatus::Processing;
+		return MovementStatus::Processing;
 
 	auto ground_next_pos = window.value().ground;
 	auto roof_next_pos = window.value().roof;
@@ -333,42 +374,68 @@ AiClient::TrivialMoveStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, 
 		duck();
 	}
 
-	return TrivialMoveStatus::Processing;
+	return MovementStatus::Processing;
 }
 
-AiClient::AvoidOtherPlayersStatus AiClient::avoidOtherPlayers(HL::Protocol::UserCmd& cmd)
+AiClient::MovementStatus AiClient::navmeshMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
+{
+	/*auto ground = getGroundFromOrigin(getOrigin());
+
+	if (!ground.has_value())
+		return MovementStatus::Processing;
+
+	auto my_area = mNavMesh.getArea(ground.value());
+
+	if (!my_area.has_value())
+	{
+		buildNavMesh(ground.value());
+		return MovementStatus::Processing;
+	}*/
+
+	return trivialMoveTo(cmd, target);
+}
+
+AiClient::MovementStatus AiClient::avoidOtherPlayers(HL::Protocol::UserCmd& cmd)
 {
 	auto nearest_ent = findNearestVisiblePlayerEntity();
 
 	if (!nearest_ent.has_value())
-		return AvoidOtherPlayersStatus::Finished;
+		return MovementStatus::Finished;
 
 	auto distance = getDistance(*nearest_ent.value());
 
 	if (distance >= PlayerWidth * 1.5f)
-		return AvoidOtherPlayersStatus::Finished;
+		return MovementStatus::Finished;
 
 	lookAt(cmd, *nearest_ent.value());
 	moveFrom(cmd, *nearest_ent.value());
-	return AvoidOtherPlayersStatus::Processing;
+	return MovementStatus::Processing;
 }
 
-AiClient::TrivialMoveStatus AiClient::trivialMoveToCustomTarget(HL::Protocol::UserCmd& cmd)
+AiClient::MovementStatus AiClient::moveToCustomTarget(HL::Protocol::UserCmd& cmd)
 {
 	if (!mCustomMoveTarget.has_value())
-		return TrivialMoveStatus::Finished;
+		return MovementStatus::Finished;
 	
 	auto target = mCustomMoveTarget.value();
 	target.z = getOrigin().z;
 
-	if (trivialMoveTo(cmd, target) == TrivialMoveStatus::Finished)
+	if (navmeshMoveTo(cmd, target) == MovementStatus::Finished)
 	{
 		if (getSpeed() == 0.0f)
 		{
 			mCustomMoveTarget.reset();
-			return TrivialMoveStatus::Finished;
+			return MovementStatus::Finished;
 		}
 	}
 
-	return TrivialMoveStatus::Processing;
+	return MovementStatus::Processing;
+}
+
+void AiClient::buildNavMesh(const glm::vec3& start_ground_point)
+{
+	auto area = NavMesh::Area{};
+	area.position = start_ground_point;
+
+	//mNavMesh.addArea(area);
 }

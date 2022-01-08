@@ -3,6 +3,41 @@
 #include <HL/playable_client.h>
 #include <HL/bspfile.h>
 
+class NavMesh
+{
+public:
+	struct Area;
+	using Chain = std::list<Area>;
+
+public:
+	std::optional<std::shared_ptr<Area>> getArea(const glm::vec3& pos) const;
+	Chain buildChain(const glm::vec3& start, const glm::vec3& end) const;
+	void addArea(Area area);
+
+private:
+	std::map<int, Area> mAreas;
+	int mAreaIndex = 0;
+};
+
+struct NavMesh::Area
+{
+public:
+	enum class ConnectionDirection
+	{
+		Forward,
+		Back,
+		Left,
+		Right
+	};
+
+public:
+	bool isContainPoint(const glm::vec3& value) const;
+
+public:
+	glm::vec3 position = { 0.0f, 0.0f, 0.0f };
+	std::map<ConnectionDirection, std::list<int>> connections;
+};
+
 class AiClient : public HL::PlayableClient
 {
 private:
@@ -29,6 +64,8 @@ private:
 	void movement(HL::Protocol::UserCmd& cmd);
 	glm::vec3 getOrigin() const;
 	glm::vec3 getFootOrigin() const;
+	std::optional<glm::vec3> getGroundFromOrigin(const glm::vec3& origin) const;
+	std::optional<glm::vec3> getRoofFromOrigin(const glm::vec3& origin) const;
 	std::optional<HL::Protocol::Entity*> findNearestVisiblePlayerEntity();
 	bool isVisible(const glm::vec3& target) const;
 	bool isVisible(const HL::Protocol::Entity& entity) const;
@@ -59,23 +96,18 @@ public:
 	TraceResult traceLine(const glm::vec3& begin, const glm::vec3& end) const;
 
 private:
-	enum class TrivialMoveStatus
+	enum class MovementStatus
 	{
 		Finished,
 		Processing
 	};
 
-	TrivialMoveStatus trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target);
+	MovementStatus trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target);
+	MovementStatus navmeshMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target);
+	MovementStatus avoidOtherPlayers(HL::Protocol::UserCmd& cmd);
+	MovementStatus moveToCustomTarget(HL::Protocol::UserCmd& cmd);
 
-	enum class AvoidOtherPlayersStatus
-	{
-		Finished,
-		Processing
-	};
-
-	AvoidOtherPlayersStatus avoidOtherPlayers(HL::Protocol::UserCmd& cmd);
-
-	TrivialMoveStatus trivialMoveToCustomTarget(HL::Protocol::UserCmd& cmd);
+	void buildNavMesh(const glm::vec3& start_ground_point);
 
 public:
 	void setCustomMoveTarget(const glm::vec3& value) { mCustomMoveTarget = value; };
@@ -90,4 +122,6 @@ private:
 	bool mWantJump = false;
 	bool mWantDuck = false;
 	Clock::TimePoint mLastAirTime = Clock::Now();
+	NavMesh mNavMesh;
+	NavMesh::Chain mNavChain;
 };
