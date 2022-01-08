@@ -39,6 +39,7 @@ if(WIN32)
 elseif(APPLE)
     set(CMAKE_MACOSX_BUNDLE YES)
     set(CMAKE_OSX_SYSROOT iphoneos)
+    set(CMAKE_XCODE_BUILD_SYSTEM 12)
 
     file(GLOB IOS_SRC 
         ios/*.m
@@ -50,6 +51,7 @@ elseif(APPLE)
 
     set(RESOURCES
         ios/LaunchScreen.storyboard
+        ios/Images.xcassets
         assets
     )
 
@@ -60,7 +62,7 @@ elseif(APPLE)
 
     add_executable(${PROJECT_NAME} 
         ${ALL_SRC}
-		${IOS_SRC}
+        ${IOS_SRC}
         ${RESOURCES}
     )
 
@@ -79,12 +81,12 @@ elseif(APPLE)
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist
     )
 
-    target_link_libraries(${PROJECT_NAME}
+    #target_link_libraries(${PROJECT_NAME}
     #    "-framework FBSDKCoreKit"
     #    "-framework FBSDKLoginKit"
     #    "-framework FBSDKShareKit"
-    )
-    
+    #)
+
 elseif(ANDROID)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 

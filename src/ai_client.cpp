@@ -53,7 +53,7 @@ void AiClient::initializeGame()
 	PlayableClient::initializeGame();
 
 	const auto& info = getServerInfo().value();
-	mBspFile.loadFromFile(info.game_dir + "/" + info.map, false);
+    mBspFile.loadFromFile(info.game_dir + "/" + info.map, false);
 
 	CONSOLE->execute("delay 1 'cmd \"jointeam 2\"'");
 	CONSOLE->execute("delay 2 'cmd \"joinclass 6\"'");
