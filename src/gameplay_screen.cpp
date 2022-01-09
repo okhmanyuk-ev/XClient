@@ -79,7 +79,7 @@ void GameplayViewNode::touch(Touch type, const glm::vec2& pos)
 	if (CLIENT->getState() < HL::BaseClient::State::GameStarted)
 		return;
 
-	auto target = screenToWorld(pos / PLATFORM->getScale());
+	auto target = screenToWorld(unproject(pos));
 	CLIENT->setCustomMoveTarget(target);
 
 	if (type == Touch::Begin)
