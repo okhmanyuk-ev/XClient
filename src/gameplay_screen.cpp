@@ -135,12 +135,12 @@ void GameplayScreen::draw()
 
 	if (state == HL::BaseClient::State::Disconnected)
 	{
-		auto button = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>(*gui_holder);
+		auto button = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
 		button->getLabel()->setText("CONNECT");
 		button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 18.0f, dTime));
-		button->setSize(Common::Helpers::SmoothValueAssign(button->getSize(), { 192.0f, 48.0f }, dTime));
-		button->setAnchor(Common::Helpers::SmoothValueAssign(button->getAnchor(), { 0.5f, 0.5f }, dTime));
-		button->setPivot(Common::Helpers::SmoothValueAssign(button->getPivot(), { 0.5f, 0.5f }, dTime));
+		button->setSize({ 192.0f, 48.0f });
+		button->setAnchor({ 0.5f, 0.5f });
+		button->setPivot({ 0.5f, 0.5f });
 		button->setRounding(0.5f);
 		button->setClickCallback([] {
 			CONSOLE->execute("connect 192.168.0.106:27015");
@@ -148,13 +148,13 @@ void GameplayScreen::draw()
 	}
 	else
 	{
-		auto button = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>(*gui_holder);
+		auto button = IMSCENE->attachTemporaryNode< Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
 		button->getLabel()->setText("DISCONNECT");
 		button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 10.0f, dTime));
-		button->setSize(Common::Helpers::SmoothValueAssign(button->getSize(), { 96.0f, 24.0f }, dTime));
-		button->setAnchor(Common::Helpers::SmoothValueAssign(button->getAnchor(), { 1.0f, 0.0f }, dTime));
-		button->setPivot(Common::Helpers::SmoothValueAssign(button->getPivot(), { 1.0f, 0.0f }, dTime));
-		button->setPosition(Common::Helpers::SmoothValueAssign(button->getPosition(), { -8.0f, 8.0f }, dTime));
+		button->setSize({ 96.0f, 24.0f });
+		button->setAnchor({ 1.0f, 0.0f });
+		button->setPivot({ 1.0f, 0.0f });
+		button->setPosition({ -8.0f, 8.0f });
 		button->setRounding(0.5f);
 		button->setClickCallback([] {
 			CONSOLE->execute("disconnect");
