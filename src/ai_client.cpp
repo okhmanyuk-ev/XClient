@@ -112,6 +112,11 @@ glm::vec3 AiClient::getOrigin() const
 	return getClientData().origin;
 }
 
+glm::vec3 AiClient::getAngles() const
+{
+	return mPrevViewAngles;
+}
+
 glm::vec3 AiClient::getFootOrigin() const
 {
 	auto origin = getOrigin();

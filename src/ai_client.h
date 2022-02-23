@@ -57,12 +57,15 @@ private:
 public:
 	AiClient();
 
+public:
+	glm::vec3 getOrigin() const;
+	glm::vec3 getAngles() const;
+
 private:
 	void initializeGameEngine() override;
 	void initializeGame() override;
 	void think(HL::Protocol::UserCmd& cmd);
 	void movement(HL::Protocol::UserCmd& cmd);
-	glm::vec3 getOrigin() const;
 	glm::vec3 getFootOrigin() const;
 	std::optional<glm::vec3> getGroundFromOrigin(const glm::vec3& origin) const;
 	std::optional<glm::vec3> getRoofFromOrigin(const glm::vec3& origin) const;

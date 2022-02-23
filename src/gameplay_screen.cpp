@@ -15,6 +15,8 @@ void GameplayViewNode::draw()
 	if (CLIENT->getState() != HL::BaseClient::State::GameStarted)
 		return;
 
+	draw3dView();
+
 	const auto& clientdata = CLIENT->getClientData();
 	STATS_INDICATE_GROUP("clientdata", "origin", fmt::format("{:.0f} {:.0f} {:.0f}", clientdata.origin.x, clientdata.origin.y, clientdata.origin.z));
 	STATS_INDICATE_GROUP("clientdata", "flags", clientdata.flags);
@@ -70,6 +72,20 @@ void GameplayViewNode::drawCustomMoveTarget()
 	circle->setPivot(0.5f);
 	circle->setColor(trace_result.fraction < 1.0f ? Graphics::Color::Red : Graphics::Color::Lime);
 	circle->setRadius(4.0f);
+}
+
+void GameplayViewNode::draw3dView() 
+{
+	if (!mBspDraw.has_value() || mBspDraw.value().first != getShortMapName())
+		mBspDraw = { getShortMapName(), std::make_shared<HL::BspDraw>(CLIENT->getBsp()) };
+
+	auto target = GRAPHICS->getRenderTarget("bsp_3d_view", 800, 600);
+	mBspDraw.value().second->draw(target, CLIENT->getOrigin(), CLIENT->getAngles());
+
+	ImGui::Begin("3D View");
+	auto width = ImGui::GetContentRegionAvailWidth();
+	Shared::SceneEditor::drawImage(target, std::nullopt, width);
+	ImGui::End();
 }
 
 void GameplayViewNode::touch(Touch type, const glm::vec2& pos)

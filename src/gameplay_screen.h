@@ -3,6 +3,7 @@
 #include <shared/all.h>
 #include <HL/hltv_client.h>
 #include <HL/gameplay_view_node.h>
+#include <HL/bsp_draw.h>
 
 namespace XClient
 {
@@ -17,6 +18,10 @@ namespace XClient
 
 	private:
 		void drawCustomMoveTarget();
+		void draw3dView();
+
+	private:
+		std::optional<std::pair<std::string, std::shared_ptr<HL::BspDraw>>> mBspDraw;
 	};
 
 	class GameplayScreen : public Shared::SceneHelpers::StandardScreen
