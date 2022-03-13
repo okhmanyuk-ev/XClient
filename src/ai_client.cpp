@@ -2,25 +2,31 @@
 #include <HL/utils.h>
 #include <common/helpers.h>
 
-std::optional<std::shared_ptr<NavMesh::Area>> NavMesh::getArea(const glm::vec3& pos) const
+std::shared_ptr<NavArea> NavMesh::findNearestArea(const glm::vec3& pos) const
 {
-	return std::nullopt;
+	float min_distance = 8192.0f;
+	std::shared_ptr<NavArea> result = nullptr;
+	for (auto area : areas)
+	{
+		auto distance = glm::distance(pos, area->position);
+		if (distance < min_distance)
+		{
+			result = area;
+			min_distance = distance;
+		}
+	}
+	return result;
 }
 
-NavMesh::Chain NavMesh::buildChain(const glm::vec3& start, const glm::vec3& end) const
+std::shared_ptr<NavArea> NavMesh::findExactArea(const glm::vec3& pos) const
 {
-	return {};
-}
-
-void NavMesh::addArea(Area area)
-{
-	mAreas.insert({ mAreaIndex, area });
-	mAreaIndex += 1;
-}
-
-bool NavMesh::Area::isContainPoint(const glm::vec3& value) const
-{
-	return false;
+	for (auto area : areas)
+	{
+		auto distance = glm::distance(pos, area->position);
+		if (distance <= 4.0f)
+			return area;
+	}
+	return nullptr;
 }
 
 AiClient::AiClient()
@@ -46,6 +52,9 @@ void AiClient::initializeGameEngine()
 	PlayableClient::initializeGameEngine();
 
 	mThinkTime = Clock::Now();
+	mNavChain.clear();
+	mNavMesh.areas.clear();
+	mCustomMoveTarget.reset();
 }
 
 void AiClient::initializeGame()
@@ -120,12 +129,7 @@ glm::vec3 AiClient::getAngles() const
 glm::vec3 AiClient::getFootOrigin() const
 {
 	auto origin = getOrigin();
-
-	if (isDucking())
-		origin.z -= PlayerOriginZDuck;
-	else
-		origin.z -= PlayerOriginZStand;
-
+	origin.z -= getCurrentEyeHeight();
 	return origin;
 }
 
@@ -209,6 +213,22 @@ bool AiClient::isDucking() const
 bool AiClient::isTired() const
 {
 	return Clock::Now() - mLastAirTime <= Clock::FromSeconds(JumpCooldownSeconds);
+}
+
+float AiClient::getCurrentHeight() const
+{
+	if (isDucking())
+		return PlayerHeightDuck;
+	else
+		return PlayerHeightStand;
+}
+
+float AiClient::getCurrentEyeHeight() const
+{
+	if (isDucking())
+		return PlayerOriginZDuck;
+	else
+		return PlayerOriginZStand;
 }
 
 float AiClient::getSpeed() const
@@ -307,16 +327,18 @@ AiClient::TraceResult AiClient::traceLine(const glm::vec3& begin, const glm::vec
 	return result;
 }
 
-AiClient::MovementStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
+AiClient::MovementStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target, bool allow_walk)
 {
-	auto distance = getDistance(target);
+	const glm::vec3 eye_target = { target.x, target.y, getOrigin().z };
 
-	if (distance <= PlayerWidth / 2.0f)
+	auto distance = getDistance(eye_target);
+
+	if (distance <= TrivialMovementMinDistance)
 		return MovementStatus::Finished;
 
-	bool walk = distance <= PlayerWidth * 2.0f;
+	bool walk = distance <= PlayerWidth * 2.0f && allow_walk;
 
-	lookAt(cmd, target);
+	lookAt(cmd, eye_target);
 	moveTo(cmd, target, walk);
 
 	const auto foot_origin = getFootOrigin();
@@ -382,22 +404,60 @@ AiClient::MovementStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, con
 	return MovementStatus::Processing;
 }
 
-AiClient::MovementStatus AiClient::navmeshMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
+AiClient::MovementStatus AiClient::navMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
 {
-	/*auto ground = getGroundFromOrigin(getOrigin());
+	auto src_area = mNavMesh.findNearestArea(getFootOrigin());
+	auto dst_area = mNavMesh.findNearestArea(target);
 
-	if (!ground.has_value())
-		return MovementStatus::Processing;
+	mNavChain = buildNavChain(dst_area, src_area);
+	mNavChain.reverse();
 
-	auto my_area = mNavMesh.getArea(ground.value());
-
-	if (!my_area.has_value())
+	/*for (auto area : mNavChain)
 	{
-		buildNavMesh(ground.value());
-		return MovementStatus::Processing;
-	}*/
+		auto pos = area.lock()->position;
+		auto corrected_pos = pos + glm::vec3{ 0.0f, 0.0f, getCurrentOriginZ() };
 
-	return trivialMoveTo(cmd, target);
+		auto result = trivialMoveTo(cmd, corrected_pos);
+
+		if (result == MovementStatus::Finished)
+			continue;
+		else
+			return result;
+	}
+
+	return MovementStatus::Finished;*/
+
+	/*auto trivial_target = target;
+	trivial_target.z += getCurrentOriginZ();
+
+	for (auto area : mNavChain)
+	{
+		auto pos = area.lock()->position;
+		auto corrected_pos = pos + glm::vec3{ 0.0f, 0.0f, getCurrentOriginZ() };
+
+		if (getDistance(corrected_pos) <= TrivialMovementMinDistance)
+			continue;
+
+		if (!isVisible(corrected_pos))
+			break;
+
+		mNavChain.pop_front();
+		trivial_target = corrected_pos;
+		break;
+	}
+
+	return trivialMoveTo(cmd, trivial_target);*/
+
+	if (mNavChain.size() > 1)
+	{
+		mNavChain.pop_front();
+		mNavChain.pop_front();
+	}
+
+	if (!mNavChain.empty())
+		return trivialMoveTo(cmd, mNavChain.front()->position, false);
+	else
+		return trivialMoveTo(cmd, target);
 }
 
 AiClient::MovementStatus AiClient::avoidOtherPlayers(HL::Protocol::UserCmd& cmd)
@@ -419,13 +479,34 @@ AiClient::MovementStatus AiClient::avoidOtherPlayers(HL::Protocol::UserCmd& cmd)
 
 AiClient::MovementStatus AiClient::moveToCustomTarget(HL::Protocol::UserCmd& cmd)
 {
+	auto ground = getGroundFromOrigin(getOrigin());
+
+	if (!ground.has_value())
+		return MovementStatus::Processing;
+
+	buildNavMesh(ground.value());
+
+	if (mNavMesh.areas.empty())
+		return MovementStatus::Processing;
+
 	if (!mCustomMoveTarget.has_value())
 		return MovementStatus::Finished;
 	
 	auto target = mCustomMoveTarget.value();
-	target.z = getOrigin().z;
+	
+	auto target_ground = getGroundFromOrigin(mCustomMoveTarget.value());
 
-	if (navmeshMoveTo(cmd, target) == MovementStatus::Finished)
+	if (target_ground.has_value())
+		target = target_ground.value();
+
+	MovementStatus result;
+
+	if (mUseNavMovement)
+		result = navMoveTo(cmd, target);
+	else
+		result = trivialMoveTo(cmd, target);
+
+	if (result == MovementStatus::Finished)
 	{
 		if (getSpeed() == 0.0f)
 		{
@@ -437,10 +518,252 @@ AiClient::MovementStatus AiClient::moveToCustomTarget(HL::Protocol::UserCmd& cmd
 	return MovementStatus::Processing;
 }
 
-void AiClient::buildNavMesh(const glm::vec3& start_ground_point)
+AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_ground_point)
 {
-	auto area = NavMesh::Area{};
-	area.position = start_ground_point;
+	if (!isOnGround())
+		return BuildNavMeshStatus::Processing;
 
-	//mNavMesh.addArea(area);
+	if (mNavMesh.areas.empty())
+	{
+		auto area = std::make_shared<NavArea>();
+		area->position = start_ground_point;
+		mNavMesh.areas.insert(area);
+		return BuildNavMeshStatus::Processing;
+	}
+
+	auto base_area = mNavMesh.findNearestArea(start_ground_point);
+
+	std::unordered_set<std::shared_ptr<NavArea>> ignore;
+
+	removeFarNavAreas();
+
+	return buildNavMesh(base_area, ignore);
+}
+
+AiClient::BuildNavMeshStatus AiClient::buildNavMesh(std::shared_ptr<NavArea> base_area, std::unordered_set<std::shared_ptr<NavArea>>& ignore)
+{
+	if (getDistance(base_area->position) > NavFieldDistance)
+		return BuildNavMeshStatus::Finished;
+
+	if (ignore.contains(base_area))
+		return BuildNavMeshStatus::Finished;
+
+	ignore.insert(base_area);
+
+	auto stepPosition = [NavStep = NavStep](const glm::vec3& pos, NavDirection dir) -> glm::vec3 {
+		auto dst_pos = pos;
+		if (dir == NavDirection::Back)
+			dst_pos.y -= NavStep;
+		else if (dir == NavDirection::Forward)
+			dst_pos.y += NavStep;
+		else if (dir == NavDirection::Left)
+			dst_pos.x += NavStep;
+		else if (dir == NavDirection::Right)
+			dst_pos.x -= NavStep;
+		return dst_pos;
+	};
+
+	for (auto dir : Directions)
+	{
+		if (base_area->neighbours.contains(dir))
+			continue;
+
+		auto src_pos = base_area->position;
+		src_pos.z += StepHeight;
+
+		auto dst_pos = stepPosition(src_pos, dir);
+		
+		auto result = traceLine(src_pos, dst_pos);
+
+		if (result.fraction < 1.0f)
+		{
+			base_area->neighbours.insert({ dir, std::nullopt });
+			return BuildNavMeshStatus::Processing;
+		}
+
+		auto dst_ground = getGroundFromOrigin(dst_pos).value();
+
+		auto neighbour = mNavMesh.findExactArea(dst_ground);
+
+		auto opposite_dir = OppositeDirections.at(dir);
+
+		if (neighbour != nullptr)
+		{
+			base_area->neighbours.insert({ dir, neighbour });
+			neighbour->neighbours.insert({ opposite_dir, base_area });
+			return BuildNavMeshStatus::Processing;
+		}
+
+		auto area = std::make_shared<NavArea>();
+		area->position = dst_ground;
+		mNavMesh.areas.insert(area);
+
+		base_area->neighbours.insert({ dir, area });
+		area->neighbours.insert({ opposite_dir, base_area });
+
+		return BuildNavMeshStatus::Processing;
+	}
+
+	for (auto dir : Directions)
+	{
+		auto neighbour = base_area->neighbours.at(dir);
+
+		if (!neighbour.has_value())
+			continue;
+
+		buildNavMesh(neighbour.value().lock(), ignore);
+	}
+
+	return BuildNavMeshStatus::Finished;
+}
+
+void AiClient::removeNavArea(std::shared_ptr<NavArea> area)
+{
+	for (auto _area : mNavMesh.areas)
+	{
+		for (auto dir : Directions)
+		{
+			if (!_area->neighbours.contains(dir))
+				continue;
+
+			auto neighbour = _area->neighbours.at(dir);
+
+			if (!neighbour.has_value())
+				continue;
+
+			auto neighbour_nn = neighbour.value().lock();
+
+			if (neighbour_nn != area)
+				continue;
+
+			_area->neighbours.erase(dir);
+		}
+	}
+
+	mNavMesh.areas.erase(area);
+}
+
+void AiClient::removeFarNavAreas()
+{
+	for (auto area : mNavMesh.areas)
+	{
+		auto distance = getDistance(area->position);
+		
+		if (distance <= NavFieldDistance * 1.25f)
+			continue;
+
+		removeNavArea(area);
+		removeFarNavAreas();
+		return;
+	}
+}
+
+NavChain AiClient::buildNavChain(std::shared_ptr<NavArea> src_area, std::shared_ptr<NavArea> dst_area)
+{
+	assert(src_area);
+	assert(dst_area);
+
+	struct Info
+	{
+		std::shared_ptr<NavArea> parent;
+		float cost_to_start = 0.0f; // g
+		float cost_to_finish = 0.0f; // h
+		auto get_cost_total() const { return cost_to_start + cost_to_finish; } // f
+		//auto get_cost_total() const { return cost_to_start; } // f, dijkstra
+	};
+
+	std::unordered_map<std::shared_ptr<NavArea>, Info> infos;
+	std::unordered_set<std::shared_ptr<NavArea>> open_list;
+	std::unordered_set<std::shared_ptr<NavArea>> closed_list;
+
+	auto find_best_from_open_list = [&] {
+		float min_cost = std::numeric_limits<float>::max();
+		std::shared_ptr<NavArea> result = nullptr;
+		for (auto area : open_list)
+		{
+			const auto& info = infos.at(area);
+			auto cost_total = info.get_cost_total();
+			if (cost_total < min_cost)
+			{
+				result = area;
+				min_cost = cost_total;
+			}
+		}
+		assert(result);
+		return result;
+	};
+
+	auto assemble_chain = [&](std::shared_ptr<NavArea> a) {
+		auto result = NavChain{};
+		while (a != nullptr)
+		{
+			result.push_front(a);
+			a = infos.at(a).parent;
+		}
+		return result;
+	};
+
+	auto get_cost_multiplier = [](std::shared_ptr<NavArea> a) {
+		const float total_penalty = 20.0f;
+		float result = total_penalty;
+		for (auto dir : Directions)
+		{
+			if (!a->neighbours.contains(dir))
+				continue;//return -1.0f; // promote researching
+
+			auto neighbour = a->neighbours.at(dir);
+
+			if (!neighbour.has_value())
+				continue;
+
+			result -= total_penalty / 4.0f;
+		}
+		return result + 1.0f;
+	};
+
+	auto& src_area_info = infos[src_area];
+	src_area_info.cost_to_finish = glm::distance(src_area->position, dst_area->position);
+	open_list.insert(src_area);
+
+	while (!open_list.empty())
+	{
+		auto area = find_best_from_open_list();
+
+		if (area == dst_area)
+			return assemble_chain(area);
+
+		open_list.erase(area);
+		closed_list.insert(area);
+
+		for (auto [dir, neighbour] : area->neighbours)
+		{
+			if (!neighbour.has_value())
+				continue;
+
+			auto neighbour_nn = neighbour->lock();
+
+			if (!neighbour_nn->neighbours.at(OppositeDirections.at(dir)).has_value())
+				continue; // do not allow one-way connections, because we swap src and dst areas
+
+			if (closed_list.contains(neighbour_nn))
+				continue;
+
+			auto cost_multiplier = get_cost_multiplier(neighbour_nn);
+			auto cost_to_start = infos.at(area).cost_to_start + glm::distance(area->position, neighbour_nn->position) * cost_multiplier;
+
+			bool neighbour_is_better = !infos.contains(neighbour_nn) || infos.at(neighbour_nn).cost_to_start > cost_to_start;
+			
+			if (!neighbour_is_better)
+				continue;
+
+			open_list.insert(neighbour_nn);
+
+			auto& info = infos[neighbour_nn];
+			info.parent = area;
+			info.cost_to_finish = glm::distance(neighbour_nn->position, dst_area->position);
+			info.cost_to_start = cost_to_start;
+		}
+	}
+
+	return { };
 }

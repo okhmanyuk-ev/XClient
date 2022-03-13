@@ -3,39 +3,43 @@
 #include <HL/playable_client.h>
 #include <HL/bspfile.h>
 
-class NavMesh
+enum class NavDirection
 {
-public:
-	struct Area;
-	using Chain = std::list<Area>;
-
-public:
-	std::optional<std::shared_ptr<Area>> getArea(const glm::vec3& pos) const;
-	Chain buildChain(const glm::vec3& start, const glm::vec3& end) const;
-	void addArea(Area area);
-
-private:
-	std::map<int, Area> mAreas;
-	int mAreaIndex = 0;
+	Forward,
+	Back,
+	Left,
+	Right
 };
 
-struct NavMesh::Area
+struct NavArea
 {
-public:
-	enum class ConnectionDirection
-	{
-		Forward,
-		Back,
-		Left,
-		Right
-	};
-
-public:
-	bool isContainPoint(const glm::vec3& value) const;
-
-public:
 	glm::vec3 position = { 0.0f, 0.0f, 0.0f };
-	std::map<ConnectionDirection, std::list<int>> connections;
+	std::map<NavDirection, std::optional<std::weak_ptr<NavArea>>> neighbours;
+};
+
+struct NavMesh
+{
+	std::unordered_set<std::shared_ptr<NavArea>> areas;
+
+	std::shared_ptr<NavArea> findNearestArea(const glm::vec3& pos) const;
+	std::shared_ptr<NavArea> findExactArea(const glm::vec3& pos) const;
+};
+
+using NavChain = std::list<std::shared_ptr<NavArea>>;
+
+
+const std::vector<NavDirection> Directions = {
+	NavDirection::Forward,
+	NavDirection::Left,
+	NavDirection::Right,
+	NavDirection::Back,
+};
+
+const std::map<NavDirection, NavDirection> OppositeDirections = {
+	{ NavDirection::Forward, NavDirection::Back },
+	{ NavDirection::Back, NavDirection::Forward },
+	{ NavDirection::Left, NavDirection::Right },
+	{ NavDirection::Right, NavDirection::Left },
 };
 
 class AiClient : public HL::PlayableClient
@@ -53,6 +57,11 @@ private:
 	const float WalkSpeedMultiplier = 0.4f;
 	const float UseRadius = 64.0f;
 	const float JumpCooldownSeconds = 1.0f; // we should not bunnyhopping, because next jumps are not high
+
+	const float NavStep = PlayerWidth * 1.0f;
+	const float NavFieldDistance = 512.0f + 64.0f;
+
+	const float TrivialMovementMinDistance = PlayerWidth / 2.0f;
 
 public:
 	AiClient();
@@ -76,6 +85,8 @@ private:
 	bool isOnLadder() const;
 	bool isDucking() const;
 	bool isTired() const;
+	float getCurrentHeight() const;
+	float getCurrentEyeHeight() const;
 	float getSpeed() const;
 	float getDistance(const glm::vec3& target) const;
 	float getDistance(const HL::Protocol::Entity& entity) const;
@@ -105,17 +116,34 @@ private:
 		Processing
 	};
 
-	MovementStatus trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target);
-	MovementStatus navmeshMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target);
+	MovementStatus trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target, bool allow_walk = true);
+	MovementStatus navMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target);
 	MovementStatus avoidOtherPlayers(HL::Protocol::UserCmd& cmd);
 	MovementStatus moveToCustomTarget(HL::Protocol::UserCmd& cmd);
 
-	void buildNavMesh(const glm::vec3& start_ground_point);
+	
+private:
+	enum class BuildNavMeshStatus
+	{
+		Finished,
+		Processing
+	};
+
+	BuildNavMeshStatus buildNavMesh(const glm::vec3& start_ground_point);
+	BuildNavMeshStatus buildNavMesh(std::shared_ptr<NavArea> base_area, std::unordered_set<std::shared_ptr<NavArea>>& ignore);
+	void removeNavArea(std::shared_ptr<NavArea> area);
+	void removeFarNavAreas();
+	NavChain buildNavChain(std::shared_ptr<NavArea> src_area, std::shared_ptr<NavArea> dst_area);
 
 public:
 	void setCustomMoveTarget(const glm::vec3& value) { mCustomMoveTarget = value; };
 	const auto& getCustomMoveTarget() const { return mCustomMoveTarget; }
 	const auto& getBsp() const { return mBspFile; }
+	const auto& getNavMesh() const { return mNavMesh; }
+	const auto& getNavChain() const { return mNavChain; }
+
+	auto getUseNavMovement() const { return mUseNavMovement; }
+	void setUseNavMovement(bool value) { mUseNavMovement = value; }
 
 private:
 	Clock::TimePoint mThinkTime = Clock::Now();
@@ -126,5 +154,6 @@ private:
 	bool mWantDuck = false;
 	Clock::TimePoint mLastAirTime = Clock::Now();
 	NavMesh mNavMesh;
-	NavMesh::Chain mNavChain;
+	NavChain mNavChain;
+	bool mUseNavMovement = true;
 };

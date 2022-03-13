@@ -16,9 +16,15 @@ namespace XClient
 		void draw() override;
 		void touch(Touch type, const glm::vec2& pos) override;
 
+	protected:
+		void drawOnBackground(Scene::Node& holder) override;
+
 	private:
-		void drawCustomMoveTarget();
+		void drawTrivialMovement(Scene::Node& holder);
+		void drawNavMovement(Scene::Node& holder);
 		void draw3dView();
+		void draw3dNavMesh(std::shared_ptr<Renderer::RenderTarget> target, const glm::vec3& pos, const glm::vec3& angles);
+		void draw2dNavMesh(Scene::Node& holder);
 
 	private:
 		std::optional<std::pair<std::string, std::shared_ptr<HL::BspDraw>>> mBspDraw;
