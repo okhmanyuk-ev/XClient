@@ -531,25 +531,57 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_groun
 		return BuildNavMeshStatus::Processing;
 	}
 
-	auto base_area = mNavMesh.findNearestArea(start_ground_point);
-
-	std::unordered_set<std::shared_ptr<NavArea>> ignore;
-
 	removeFarNavAreas();
 
-	return buildNavMesh(base_area, ignore);
+	auto base_area = mNavMesh.findNearestArea(start_ground_point);
+
+	std::list<std::shared_ptr<NavArea>> open_list;
+	std::unordered_set<std::shared_ptr<NavArea>> ignore;
+	open_list.push_back(base_area);
+	bool skip = false;
+
+	while (!open_list.empty())
+	{
+		auto area = open_list.back();
+		open_list.pop_back();
+
+		if (ignore.contains(area))
+			continue;
+
+		ignore.insert(area);
+
+		while (true)
+		{
+			if (buildNavMesh(area) != BuildNavMeshStatus::Finished)
+				skip = true;
+			else
+				break;
+		}
+
+		if (skip)
+			continue;
+
+		for (auto dir : Directions)
+		{
+			auto neighbour = area->neighbours.at(dir);
+
+			if (!neighbour.has_value())
+				continue;
+
+			auto neighbour_nn = neighbour.value().lock();
+
+			if (getDistance(neighbour_nn->position) > NavFieldDistance)
+				continue;
+
+			open_list.push_front(neighbour_nn);
+		}
+	}
+	
+	return skip ? BuildNavMeshStatus::Processing : BuildNavMeshStatus::Finished;
 }
 
-AiClient::BuildNavMeshStatus AiClient::buildNavMesh(std::shared_ptr<NavArea> base_area, std::unordered_set<std::shared_ptr<NavArea>>& ignore)
+AiClient::BuildNavMeshStatus AiClient::buildNavMesh(std::shared_ptr<NavArea> base_area)
 {
-	if (getDistance(base_area->position) > NavFieldDistance)
-		return BuildNavMeshStatus::Finished;
-
-	if (ignore.contains(base_area))
-		return BuildNavMeshStatus::Finished;
-
-	ignore.insert(base_area);
-
 	auto stepPosition = [NavStep = NavStep](const glm::vec3& pos, NavDirection dir) -> glm::vec3 {
 		auto dst_pos = pos;
 		if (dir == NavDirection::Back)
@@ -602,16 +634,6 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(std::shared_ptr<NavArea> bas
 		area->neighbours.insert({ opposite_dir, base_area });
 
 		return BuildNavMeshStatus::Processing;
-	}
-
-	for (auto dir : Directions)
-	{
-		auto neighbour = base_area->neighbours.at(dir);
-
-		if (!neighbour.has_value())
-			continue;
-
-		buildNavMesh(neighbour.value().lock(), ignore);
 	}
 
 	return BuildNavMeshStatus::Finished;

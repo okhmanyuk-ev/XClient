@@ -130,7 +130,7 @@ private:
 	};
 
 	BuildNavMeshStatus buildNavMesh(const glm::vec3& start_ground_point);
-	BuildNavMeshStatus buildNavMesh(std::shared_ptr<NavArea> base_area, std::unordered_set<std::shared_ptr<NavArea>>& ignore);
+	BuildNavMeshStatus buildNavMesh(std::shared_ptr<NavArea> base_area);
 	void removeNavArea(std::shared_ptr<NavArea> area);
 	void removeFarNavAreas();
 	NavChain buildNavChain(std::shared_ptr<NavArea> src_area, std::shared_ptr<NavArea> dst_area);
