@@ -336,22 +336,29 @@ AiClient::MovementStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, con
 	if (distance <= TrivialMovementMinDistance)
 		return MovementStatus::Finished;
 
+	lookAt(cmd, eye_target);
+
+	if (trivialAvoidVerticalObstacles(cmd, target) == MovementStatus::Processing)
+		return MovementStatus::Processing;
+
+	if (trivialAvoidWallCorners(cmd, target) == MovementStatus::Processing)
+		return MovementStatus::Processing;
+
 	bool walk = distance <= PlayerWidth * 2.0f && allow_walk;
 
-	lookAt(cmd, eye_target);
 	moveTo(cmd, target, walk);
 
-	const auto foot_origin = getFootOrigin();
-	const glm::vec3 foot_target = { target.x, target.y, foot_origin.z };
-	const auto direction = glm::normalize(foot_target - foot_origin);
+	return MovementStatus::Processing;
+}
 
-	// avoid obstacles
+AiClient::MovementStatus AiClient::trivialAvoidWallCorners(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
+{
+	const auto origin = getOrigin();
+	const auto direction = glm::normalize(target - origin);
 
 	auto left_direction = glm::cross(direction, { 0.0f, 0.0f, -1.0f });
 	auto right_direction = glm::cross(direction, { 0.0f, 0.0f, 1.0f });
 
-	const auto origin = getOrigin();
-		
 	const auto origin_left = origin + (left_direction * PlayerWidth * 0.5f);
 	const auto origin_left_forward = origin_left + (direction * PlayerWidth * 1.5f);
 
@@ -360,14 +367,27 @@ AiClient::MovementStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, con
 
 	auto result_left = traceLine(origin_left, origin_left_forward);
 	auto result_right = traceLine(origin_right, origin_right_forward);
-		
-	if (result_left.fraction < 1.0f && result_right.fraction >= 1.0f)
-		moveTo(cmd, origin_right);
-	else if (result_left.fraction >= 1.0f && result_right.fraction < 1.0f)
-		moveTo(cmd, origin_left);
-	
-	// jump or duck if need
 
+	if (result_left.fraction < 1.0f && result_right.fraction >= 1.0f)
+	{
+		moveTo(cmd, origin_right);
+		return MovementStatus::Processing;
+	}
+	else if (result_left.fraction >= 1.0f && result_right.fraction < 1.0f)
+	{
+		moveTo(cmd, origin_left);
+		return MovementStatus::Processing;
+	}
+	
+	return MovementStatus::Finished;
+}
+
+AiClient::MovementStatus AiClient::trivialAvoidVerticalObstacles(HL::Protocol::UserCmd& cmd, const glm::vec3& target)
+{
+	const auto foot_origin = getFootOrigin();
+	const glm::vec3 foot_target = { target.x, target.y, foot_origin.z };
+
+	const auto direction = glm::normalize(foot_target - foot_origin);
 	const auto foot_next_pos = foot_origin + (direction * PlayerWidth);
 
 	struct Window
@@ -408,23 +428,27 @@ AiClient::MovementStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, con
 	}
 
 	if (!window.has_value())
-		return MovementStatus::Processing;
+		return MovementStatus::Finished;
 
 	auto ground_next_pos = window.value().ground;
 	auto roof_next_pos = window.value().roof;
-	
+
 	auto step_height = ground_next_pos.z - foot_next_pos.z;
 
 	if (step_height > StepHeight)
 	{
+		moveTo(cmd, target);
 		jump(true);
+		return MovementStatus::Processing;
 	}
 	else if (glm::distance(ground_next_pos, roof_next_pos) < PlayerHeightStand)
 	{
+		moveTo(cmd, target);
 		duck();
+		return MovementStatus::Processing;
 	}
 
-	return MovementStatus::Processing;
+	return MovementStatus::Finished;
 }
 
 AiClient::MovementStatus AiClient::navMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target)

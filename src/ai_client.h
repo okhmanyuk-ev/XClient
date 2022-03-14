@@ -117,6 +117,8 @@ private:
 	};
 
 	MovementStatus trivialMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target, bool allow_walk = true);
+	MovementStatus trivialAvoidWallCorners(HL::Protocol::UserCmd& cmd, const glm::vec3& target);
+	MovementStatus trivialAvoidVerticalObstacles(HL::Protocol::UserCmd& cmd, const glm::vec3& target);
 	MovementStatus navMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target);
 	MovementStatus avoidOtherPlayers(HL::Protocol::UserCmd& cmd);
 	MovementStatus moveToCustomTarget(HL::Protocol::UserCmd& cmd);
