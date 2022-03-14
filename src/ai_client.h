@@ -22,7 +22,7 @@ struct NavMesh
 	std::unordered_set<std::shared_ptr<NavArea>> areas;
 
 	std::shared_ptr<NavArea> findNearestArea(const glm::vec3& pos) const;
-	std::shared_ptr<NavArea> findExactArea(const glm::vec3& pos) const;
+	std::shared_ptr<NavArea> findExactArea(const glm::vec3& pos, float tolerance) const;
 };
 
 using NavChain = std::list<std::shared_ptr<NavArea>>;

@@ -18,12 +18,12 @@ std::shared_ptr<NavArea> NavMesh::findNearestArea(const glm::vec3& pos) const
 	return result;
 }
 
-std::shared_ptr<NavArea> NavMesh::findExactArea(const glm::vec3& pos) const
+std::shared_ptr<NavArea> NavMesh::findExactArea(const glm::vec3& pos, float tolerance) const
 {
 	for (auto area : areas)
 	{
 		auto distance = glm::distance(pos, area->position);
-		if (distance <= 4.0f)
+		if (distance <= tolerance)
 			return area;
 	}
 	return nullptr;
@@ -500,6 +500,10 @@ AiClient::MovementStatus AiClient::navMoveTo(HL::Protocol::UserCmd& cmd, const g
 		mNavChain.pop_front();
 		mNavChain.pop_front();
 	}
+	else if (mNavChain.size() > 0)
+	{
+		mNavChain.pop_front();
+	}
 
 	if (!mNavChain.empty())
 		return trivialMoveTo(cmd, mNavChain.front()->position, false);
@@ -567,9 +571,6 @@ AiClient::MovementStatus AiClient::moveToCustomTarget(HL::Protocol::UserCmd& cmd
 
 AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_ground_point)
 {
-	if (!isOnGround())
-		return BuildNavMeshStatus::Processing;
-
 	if (mNavMesh.areas.empty())
 	{
 		auto area = std::make_shared<NavArea>();
@@ -578,7 +579,13 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_groun
 		return BuildNavMeshStatus::Processing;
 	}
 
-	auto base_area = mNavMesh.findNearestArea(start_ground_point);
+	auto base_area = mNavMesh.findExactArea(start_ground_point, NavStep * 1.25f);
+
+	if (base_area == nullptr)
+	{
+		mNavMesh.areas.clear();
+		return BuildNavMeshStatus::Processing;
+	}
 
 	std::list<std::shared_ptr<NavArea>> open_list;
 	std::unordered_set<std::shared_ptr<NavArea>> ignore;
@@ -664,7 +671,7 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(std::shared_ptr<NavArea> bas
 
 		auto dst_ground = getGroundFromOrigin(dst_pos).value();
 
-		auto neighbour = mNavMesh.findExactArea(dst_ground);
+		auto neighbour = mNavMesh.findExactArea(dst_ground, 4.0f);
 
 		auto opposite_dir = OppositeDirections.at(dir);
 
