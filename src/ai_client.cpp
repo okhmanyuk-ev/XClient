@@ -50,11 +50,7 @@ AiClient::AiClient()
 void AiClient::initializeGameEngine()
 {
 	PlayableClient::initializeGameEngine();
-
 	mThinkTime = Clock::Now();
-	mNavChain.clear();
-	mNavMesh.areas.clear();
-	mCustomMoveTarget.reset();
 }
 
 void AiClient::initializeGame()
@@ -66,6 +62,15 @@ void AiClient::initializeGame()
 
 	CONSOLE->execute("delay 1 'cmd \"jointeam 2\"'");
 	CONSOLE->execute("delay 2 'cmd \"joinclass 6\"'");
+}
+
+void AiClient::resetGameResources()
+{
+	HL::PlayableClient::resetGameResources();
+
+	mNavChain.clear();
+	mNavMesh.areas.clear();
+	mCustomMoveTarget.reset();
 }
 
 void AiClient::think(HL::Protocol::UserCmd& cmd)
@@ -338,8 +343,7 @@ AiClient::MovementStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, con
 
 	lookAt(cmd, eye_target);
 
-	if (trivialAvoidVerticalObstacles(cmd, target) == MovementStatus::Processing)
-		return MovementStatus::Processing;
+	trivialAvoidVerticalObstacles(cmd, target);
 
 	if (trivialAvoidWallCorners(cmd, target) == MovementStatus::Processing)
 		return MovementStatus::Processing;
@@ -437,13 +441,11 @@ AiClient::MovementStatus AiClient::trivialAvoidVerticalObstacles(HL::Protocol::U
 
 	if (step_height > StepHeight)
 	{
-		moveTo(cmd, target);
 		jump(true);
 		return MovementStatus::Processing;
 	}
 	else if (glm::distance(ground_next_pos, roof_next_pos) < PlayerHeightStand)
 	{
-		moveTo(cmd, target);
 		duck();
 		return MovementStatus::Processing;
 	}
