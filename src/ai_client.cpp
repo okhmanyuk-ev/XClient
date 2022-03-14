@@ -531,8 +531,6 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_groun
 		return BuildNavMeshStatus::Processing;
 	}
 
-	removeFarNavAreas();
-
 	auto base_area = mNavMesh.findNearestArea(start_ground_point);
 
 	std::list<std::shared_ptr<NavArea>> open_list;
@@ -576,7 +574,11 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_groun
 			open_list.push_front(neighbour_nn);
 		}
 	}
-	
+
+	removeFarNavAreas();
+
+	GAME_STATS("areas", mNavMesh.areas.size());
+
 	return skip ? BuildNavMeshStatus::Processing : BuildNavMeshStatus::Finished;
 }
 
@@ -667,16 +669,21 @@ void AiClient::removeNavArea(std::shared_ptr<NavArea> area)
 
 void AiClient::removeFarNavAreas()
 {
+	std::list<std::shared_ptr<NavArea>> far_areas;
+
 	for (auto area : mNavMesh.areas)
 	{
-		auto distance = getDistance(area->position);
+		auto distance = glm::distance(getFootOrigin(), area->position);
 		
 		if (distance <= NavFieldDistance * 1.25f)
 			continue;
 
-		removeNavArea(area);
-		removeFarNavAreas();
-		return;
+		far_areas.push_back(area);
+	}
+
+	for (auto far_area : far_areas)
+	{
+		removeNavArea(far_area);
 	}
 }
 
@@ -726,7 +733,7 @@ NavChain AiClient::buildNavChain(std::shared_ptr<NavArea> src_area, std::shared_
 	};
 
 	auto get_cost_multiplier = [](std::shared_ptr<NavArea> a) {
-		const float total_penalty = 20.0f;
+		const float total_penalty = 16.0f;
 		float result = total_penalty;
 		for (auto dir : Directions)
 		{
