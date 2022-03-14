@@ -801,7 +801,7 @@ NavChain AiClient::buildNavChain(std::shared_ptr<NavArea> src_area, std::shared_
 			if (!neighbour.has_value())
 				continue;
 
-			result -= total_penalty / 4.0f;
+			result -= total_penalty / static_cast<float>(Directions.size());
 		}
 		return result + 1.0f;
 	};
