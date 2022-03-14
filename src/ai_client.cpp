@@ -343,8 +343,31 @@ AiClient::MovementStatus AiClient::trivialMoveTo(HL::Protocol::UserCmd& cmd, con
 
 	const auto foot_origin = getFootOrigin();
 	const glm::vec3 foot_target = { target.x, target.y, foot_origin.z };
-
 	const auto direction = glm::normalize(foot_target - foot_origin);
+
+	// avoid obstacles
+
+	auto left_direction = glm::cross(direction, { 0.0f, 0.0f, -1.0f });
+	auto right_direction = glm::cross(direction, { 0.0f, 0.0f, 1.0f });
+
+	const auto origin = getOrigin();
+		
+	const auto origin_left = origin + (left_direction * PlayerWidth * 0.5f);
+	const auto origin_left_forward = origin_left + (direction * PlayerWidth * 1.5f);
+
+	const auto origin_right = origin + (right_direction * PlayerWidth * 0.5f);
+	const auto origin_right_forward = origin_right + (direction * PlayerWidth * 1.5f);
+
+	auto result_left = traceLine(origin_left, origin_left_forward);
+	auto result_right = traceLine(origin_right, origin_right_forward);
+		
+	if (result_left.fraction < 1.0f && result_right.fraction >= 1.0f)
+		moveTo(cmd, origin_right);
+	else if (result_left.fraction >= 1.0f && result_right.fraction < 1.0f)
+		moveTo(cmd, origin_left);
+	
+	// jump or duck if need
+
 	const auto foot_next_pos = foot_origin + (direction * PlayerWidth);
 
 	struct Window
