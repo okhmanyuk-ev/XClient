@@ -45,6 +45,9 @@ AiClient::AiClient()
 
 		return false;
 	});
+
+	CONSOLE->registerCVar("ai_nav_field", { "float" }, CVAR_GETTER_FLOAT(mNavField), CVAR_SETTER_FLOAT(mNavField));
+	CONSOLE->registerCVar("ai_nav_step", { "float" }, CVAR_GETTER_FLOAT(mNavStep), CVAR_SETTER_FLOAT(mNavStep));
 }
 
 void AiClient::initializeGameEngine()
@@ -581,7 +584,7 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_groun
 		return BuildNavMeshStatus::Processing;
 	}
 
-	auto base_area = mNavMesh.findExactArea(start_ground_point, NavStep * 1.25f);
+	auto base_area = mNavMesh.findExactArea(start_ground_point, mNavStep * 1.25f);
 
 	if (base_area == nullptr)
 	{
@@ -624,7 +627,7 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_groun
 
 			auto neighbour_nn = neighbour.value().lock();
 
-			if (getDistance(neighbour_nn->position) > NavFieldDistance)
+			if (getDistance(neighbour_nn->position) > mNavField)
 				continue;
 
 			open_list.push_front(neighbour_nn);
@@ -640,16 +643,16 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_groun
 
 AiClient::BuildNavMeshStatus AiClient::buildNavMesh(std::shared_ptr<NavArea> base_area)
 {
-	auto stepPosition = [NavStep = NavStep](const glm::vec3& pos, NavDirection dir) -> glm::vec3 {
+	auto stepPosition = [&](const glm::vec3& pos, NavDirection dir) -> glm::vec3 {
 		auto dst_pos = pos;
 		if (dir == NavDirection::Back)
-			dst_pos.y -= NavStep;
+			dst_pos.y -= mNavStep;
 		else if (dir == NavDirection::Forward)
-			dst_pos.y += NavStep;
+			dst_pos.y += mNavStep;
 		else if (dir == NavDirection::Left)
-			dst_pos.x += NavStep;
+			dst_pos.x += mNavStep;
 		else if (dir == NavDirection::Right)
-			dst_pos.x -= NavStep;
+			dst_pos.x -= mNavStep;
 		return dst_pos;
 	};
 
@@ -731,7 +734,7 @@ void AiClient::removeFarNavAreas()
 	{
 		auto distance = glm::distance(getFootOrigin(), area->position);
 		
-		if (distance <= NavFieldDistance * 1.25f)
+		if (distance <= mNavField * 1.25f)
 			continue;
 
 		far_areas.push_back(area);
