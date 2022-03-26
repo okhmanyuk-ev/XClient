@@ -89,6 +89,7 @@ void AiClient::think(HL::Protocol::UserCmd& cmd)
 	cmd.buttons = 0;
 	cmd.viewangles = mPrevViewAngles;
 
+	setupBspIndicesAndOrigins();
 	movement(cmd);
 
 	if (mWantJump && (isOnGround() || isOnLadder()))
@@ -113,6 +114,31 @@ void AiClient::think(HL::Protocol::UserCmd& cmd)
 	if (!isOnGround())
 	{
 		mLastAirTime = Clock::Now();
+	}
+}
+
+void AiClient::setupBspIndicesAndOrigins()
+{
+	mBspModelIndices.clear();
+	for (auto [index, entity] : getEntities())
+	{
+		if (isPlayerIndex(index))
+			continue;
+
+		auto model = findModel(entity->modelindex);
+
+		if (!model.has_value())
+			continue;
+
+		auto name = model->name;
+
+		if (!name.starts_with("*"))
+			continue;
+
+		auto bsp_model_index = std::stoi(name.substr(1));
+
+		mBspModelIndices.insert(bsp_model_index);
+		mBspFile.setModelOrigin(bsp_model_index, entity->origin);
 	}
 }
 
@@ -332,28 +358,8 @@ void AiClient::duck()
 
 AiClient::TraceResult AiClient::traceLine(const glm::vec3& begin, const glm::vec3& end) const
 {
+	auto r = mBspFile.traceLine(begin, end, mBspModelIndices);
 	TraceResult result;
-	std::vector<int> indices;
-	std::vector<std::string> ads;
-	auto entities = getEntities();
-	for (auto [index, entity] : entities)
-	{
-		if (isPlayerIndex(index))
-			continue;
-
-		auto model = findModel(entity->modelindex);
-
-		if (!model.has_value())
-			continue;
-
-		auto name = model->name;
-
-		if (!name.starts_with("*"))
-			continue;
-
-		indices.push_back(std::stoi(name.substr(1)));
-	}
-	auto r = mBspFile.traceLine(begin, end, indices);
 	result.endpos = r.endpos;
 	result.fraction = r.fraction;
 	result.start_solid = r.startsolid;

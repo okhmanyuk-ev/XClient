@@ -75,6 +75,7 @@ private:
 	void initializeGame() override;
 	void resetGameResources() override;
 	void think(HL::Protocol::UserCmd& cmd);
+	void setupBspIndicesAndOrigins();
 	void movement(HL::Protocol::UserCmd& cmd);
 	glm::vec3 getFootOrigin() const;
 	std::optional<glm::vec3> getGroundFromOrigin(const glm::vec3& origin) const;
@@ -163,4 +164,5 @@ private:
 	bool mUseNavMovement = true;
 	float mNavField = NavField;
 	float mNavStep = NavStep;
+	std::set<int> mBspModelIndices;
 };
