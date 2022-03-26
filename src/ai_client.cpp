@@ -190,10 +190,15 @@ std::optional<HL::Protocol::Entity*> AiClient::findNearestVisiblePlayerEntity()
 	return result;
 }
 
+bool AiClient::isVisible(const glm::vec3& eye, const glm::vec3& target) const
+{
+	auto result = traceLine(eye, target);
+	return result.fraction >= 1.0f;
+}
+
 bool AiClient::isVisible(const glm::vec3& target) const
 {
-	auto result = traceLine(getOrigin(), target);
-	return result.fraction >= 1.0f;
+	return isVisible(getOrigin(), target);
 }
 
 bool AiClient::isVisible(const HL::Protocol::Entity& entity) const
@@ -328,7 +333,27 @@ void AiClient::duck()
 AiClient::TraceResult AiClient::traceLine(const glm::vec3& begin, const glm::vec3& end) const
 {
 	TraceResult result;
-	auto r = mBspFile.traceLine(begin, end, false);
+	std::vector<int> indices;
+	std::vector<std::string> ads;
+	auto entities = getEntities();
+	for (auto [index, entity] : entities)
+	{
+		if (isPlayerIndex(index))
+			continue;
+
+		auto model = findModel(entity->modelindex);
+
+		if (!model.has_value())
+			continue;
+
+		auto name = model->name;
+
+		if (!name.starts_with("*"))
+			continue;
+
+		indices.push_back(std::stoi(name.substr(1)));
+	}
+	auto r = mBspFile.traceLine(begin, end, indices);
 	result.endpos = r.endpos;
 	result.fraction = r.fraction;
 	result.start_solid = r.startsolid;
@@ -372,15 +397,15 @@ AiClient::MovementStatus AiClient::trivialAvoidWallCorners(HL::Protocol::UserCmd
 	const auto origin_right = origin + (right_direction * PlayerWidth * 0.5f);
 	const auto origin_right_forward = origin_right + (direction * PlayerWidth * 1.5f);
 
-	auto result_left = traceLine(origin_left, origin_left_forward);
-	auto result_right = traceLine(origin_right, origin_right_forward);
-
-	if (result_left.fraction < 1.0f && result_right.fraction >= 1.0f)
+	auto visible_left = isVisible(origin_left, origin_left_forward);
+	auto visible_right = isVisible(origin_right, origin_right_forward);
+	
+	if (!visible_left && visible_right)
 	{
 		moveTo(cmd, origin_right);
 		return MovementStatus::Processing;
 	}
-	else if (result_left.fraction >= 1.0f && result_right.fraction < 1.0f)
+	else if (visible_left && !visible_right)
 	{
 		moveTo(cmd, origin_left);
 		return MovementStatus::Processing;
@@ -464,42 +489,6 @@ AiClient::MovementStatus AiClient::navMoveTo(HL::Protocol::UserCmd& cmd, const g
 	mNavChain = buildNavChain(dst_area, src_area);
 	mNavChain.reverse();
 
-	/*for (auto area : mNavChain)
-	{
-		auto pos = area.lock()->position;
-		auto corrected_pos = pos + glm::vec3{ 0.0f, 0.0f, getCurrentOriginZ() };
-
-		auto result = trivialMoveTo(cmd, corrected_pos);
-
-		if (result == MovementStatus::Finished)
-			continue;
-		else
-			return result;
-	}
-
-	return MovementStatus::Finished;*/
-
-	/*auto trivial_target = target;
-	trivial_target.z += getCurrentOriginZ();
-
-	for (auto area : mNavChain)
-	{
-		auto pos = area.lock()->position;
-		auto corrected_pos = pos + glm::vec3{ 0.0f, 0.0f, getCurrentOriginZ() };
-
-		if (getDistance(corrected_pos) <= TrivialMovementMinDistance)
-			continue;
-
-		if (!isVisible(corrected_pos))
-			break;
-
-		mNavChain.pop_front();
-		trivial_target = corrected_pos;
-		break;
-	}
-
-	return trivialMoveTo(cmd, trivial_target);*/
-
 	if (mNavChain.size() > 1)
 	{
 		mNavChain.pop_front();
@@ -535,6 +524,12 @@ AiClient::MovementStatus AiClient::avoidOtherPlayers(HL::Protocol::UserCmd& cmd)
 
 AiClient::MovementStatus AiClient::moveToCustomTarget(HL::Protocol::UserCmd& cmd)
 {
+	if (!mCustomMoveTarget.has_value())
+	{
+		clearNavMesh();
+		return MovementStatus::Finished;
+	}
+
 	auto ground = getGroundFromOrigin(getOrigin());
 
 	if (!ground.has_value())
@@ -544,9 +539,6 @@ AiClient::MovementStatus AiClient::moveToCustomTarget(HL::Protocol::UserCmd& cmd
 
 	if (mNavMesh.areas.empty())
 		return MovementStatus::Processing;
-
-	if (!mCustomMoveTarget.has_value())
-		return MovementStatus::Finished;
 	
 	auto target = mCustomMoveTarget.value();
 	
@@ -588,7 +580,7 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_groun
 
 	if (base_area == nullptr)
 	{
-		mNavMesh.areas.clear();
+		clearNavMesh();
 		return BuildNavMeshStatus::Processing;
 	}
 
@@ -666,9 +658,7 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(std::shared_ptr<NavArea> bas
 
 		auto dst_pos = stepPosition(src_pos, dir);
 		
-		auto result = traceLine(src_pos, dst_pos);
-
-		if (result.fraction < 1.0f)
+		if (!isVisible(src_pos, dst_pos))
 		{
 			base_area->neighbours.insert({ dir, std::nullopt });
 			return BuildNavMeshStatus::Processing;
@@ -698,6 +688,11 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(std::shared_ptr<NavArea> bas
 	}
 
 	return BuildNavMeshStatus::Finished;
+}
+
+void AiClient::clearNavMesh()
+{
+	mNavMesh.areas.clear();
 }
 
 void AiClient::removeNavArea(std::shared_ptr<NavArea> area)

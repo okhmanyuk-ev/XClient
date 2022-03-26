@@ -80,6 +80,7 @@ private:
 	std::optional<glm::vec3> getGroundFromOrigin(const glm::vec3& origin) const;
 	std::optional<glm::vec3> getRoofFromOrigin(const glm::vec3& origin) const;
 	std::optional<HL::Protocol::Entity*> findNearestVisiblePlayerEntity();
+	bool isVisible(const glm::vec3& eye, const glm::vec3& target) const;
 	bool isVisible(const glm::vec3& target) const;
 	bool isVisible(const HL::Protocol::Entity& entity) const;
 	bool isOnGround() const;
@@ -134,6 +135,7 @@ private:
 
 	BuildNavMeshStatus buildNavMesh(const glm::vec3& start_ground_point);
 	BuildNavMeshStatus buildNavMesh(std::shared_ptr<NavArea> base_area);
+	void clearNavMesh();
 	void removeNavArea(std::shared_ptr<NavArea> area);
 	void removeFarNavAreas();
 	NavChain buildNavChain(std::shared_ptr<NavArea> src_area, std::shared_ptr<NavArea> dst_area);
