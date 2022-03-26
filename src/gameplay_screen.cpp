@@ -21,6 +21,14 @@ void GameplayViewNode::draw()
 	STATS_INDICATE_GROUP("clientdata", "origin", fmt::format("{:.0f} {:.0f} {:.0f}", clientdata.origin.x, clientdata.origin.y, clientdata.origin.z));
 	STATS_INDICATE_GROUP("clientdata", "flags", clientdata.flags);
 	STATS_INDICATE_GROUP("clientdata", "maxspeed", fmt::format("{:.0f}", clientdata.maxspeed));
+
+	auto following_background = getFollowingBackground();
+
+	ImGui::Begin("some settings");
+	ImGui::Checkbox("Following Background", &following_background);
+	ImGui::End();
+
+	setFollowingBackground(following_background);
 }
 
 void GameplayViewNode::drawOnBackground(Scene::Node& holder)
@@ -306,16 +314,18 @@ void GameplayViewNode::touch(Touch type, const glm::vec2& pos)
 	if (CLIENT->getState() < HL::BaseClient::State::GameStarted)
 		return;
 
-	auto target = screenToWorld(unproject(pos));
+	auto unprojected_pos = getBackgroundNode().lock()->unproject(pos);
+
+	auto target = screenToWorld(unprojected_pos);
 	CLIENT->setCustomMoveTarget(target);
 
 	if (type == Touch::Begin)
 	{
 		auto circle = std::make_shared<Scene::Circle>();
 		circle->setPivot(0.5f);
-		circle->setAnchor(pos / getAbsoluteSize() / PLATFORM->getScale());
+		circle->setPosition(unprojected_pos);
 		circle->setRadius(0.0f);
-		attach(circle);
+		getBackgroundNode().lock()->attach(circle);
 
 		const float AnimDuration = 1.0f;
 		const auto Easing = Easing::CubicOut;
