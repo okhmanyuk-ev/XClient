@@ -69,7 +69,7 @@ void GameplayViewNode::drawTrivialMovement(Scene::Node& holder)
 	auto mid_scr = worldToScreen(mid_pos);
 	auto end_scr = worldToScreen(end_pos.value());
 
-	auto node = IMSCENE->attachTemporaryNode<HL::GenericDrawNode>(holder);
+	auto node = IMSCENE->spawn<HL::GenericDrawNode>(holder);
 	node->setStretch(1.0f);
 	node->setDrawCallback([node, start_scr, mid_scr, end_scr] {
 		GRAPHICS->draw(Renderer::Topology::LineList, {
@@ -80,7 +80,7 @@ void GameplayViewNode::drawTrivialMovement(Scene::Node& holder)
 		});
 	});
 
-	auto circle = IMSCENE->attachTemporaryNode<Scene::Circle>(holder);
+	auto circle = IMSCENE->spawn<Scene::Circle>(holder);
 	circle->setPosition(end_scr);
 	circle->setPivot(0.5f);
 	circle->setColor(trace_result.fraction < 1.0f ? Graphics::Color::Red : Graphics::Color::Lime);
@@ -110,7 +110,7 @@ void GameplayViewNode::drawNavMovement(Scene::Node& holder)
 
 	auto end_scr = worldToScreen(end_pos.value());
 
-	auto node = IMSCENE->attachTemporaryNode<HL::GenericDrawNode>(holder);
+	auto node = IMSCENE->spawn<HL::GenericDrawNode>(holder);
 	node->setStretch(1.0f);
 	node->setDrawCallback([this, start_pos, end_scr, dTime] {
 		if (CLIENT->getState() != HL::BaseClient::State::GameStarted)
@@ -164,7 +164,7 @@ void GameplayViewNode::drawNavMovement(Scene::Node& holder)
 		GRAPHICS->draw(Renderer::Topology::LineList, vertices, count);
 	});
 
-	auto circle = IMSCENE->attachTemporaryNode<Scene::Circle>(holder);
+	auto circle = IMSCENE->spawn<Scene::Circle>(holder);
 	circle->setPosition(end_scr);
 	circle->setPivot(0.5f);
 	circle->setColor(Graphics::Color::Yellow);
@@ -251,7 +251,7 @@ void GameplayViewNode::draw3dNavMesh(std::shared_ptr<Renderer::RenderTarget> tar
 
 void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 {
-	auto node = IMSCENE->attachTemporaryNode<HL::GenericDrawNode>(holder);
+	auto node = IMSCENE->spawn<HL::GenericDrawNode>(holder);
 	node->setStretch(1.0f);
 	node->setDrawCallback([this] {
 		if (CLIENT->getState() != HL::BaseClient::State::GameStarted)
@@ -342,56 +342,98 @@ void GameplayScreen::draw()
 {
 	Shared::SceneHelpers::StandardScreen::draw();
 
-	auto gameplay_holder = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::SafeArea>(*getContent());
-	auto gui_holder = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::SafeArea>(*getContent());
+	auto gameplay_holder = IMSCENE->spawn<Shared::SceneHelpers::SafeArea>(*getContent());
+	auto gui_holder = IMSCENE->spawn<Shared::SceneHelpers::SafeArea>(*getContent());
 
 	auto state = CLIENT->getState();
 	auto dTime = FRAME->getTimeDelta();
 
-	if (state == HL::BaseClient::State::GameStarted)
+	static bool LoadingLabelIsAlive = false;
+
+	if (state == HL::BaseClient::State::GameStarted && !LoadingLabelIsAlive)
 	{
-		auto gameplay_view = IMSCENE->attachTemporaryNode<GameplayViewNode>(*gameplay_holder);
+		auto gameplay_view = IMSCENE->spawn<GameplayViewNode>(*gameplay_holder);
 		gameplay_view->setStretch(1.0f);
+		IMSCENE->dontKillUntilHaveChilds(gameplay_view);
 
 		{
-			auto checkbox = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::Checkbox>>(*gui_holder);
+			auto checkbox = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::Checkbox>>(*gui_holder);
 			checkbox->setSize({ 96.0f, 24.0f });
 			checkbox->setAnchor({ 1.0f, 0.0f });
-			checkbox->setPivot({ 1.0f, 0.0f });
 			checkbox->setPosition({ -8.0f, 36.0f });
 			checkbox->getLabel()->setText("NAV");
 			checkbox->getLabel()->setFontSize(10.0f);
-			checkbox->getOuterRectangle()->setRounding(1.0f);
-			checkbox->getInnerRectangle()->setRounding(1.0f);
+			checkbox->getOuterRectangle()->setRounding(0.5f);
+			checkbox->getInnerRectangle()->setRounding(0.5f);
 			checkbox->setChecked(CLIENT->getUseNavMovement());
 			checkbox->setChangeCallback([](bool checked) {
 				CLIENT->setUseNavMovement(checked);
 			});
+
+			if (IMSCENE->nodeJustSpawned())
+				checkbox->setPivot({ 0.0f, 0.0f });
+			else
+				checkbox->setPivot({ 1.0f, 0.0f });
+
+			IMSCENE->destroyAction(checkbox, Actions::Collection::MakeSequence(
+				Actions::Collection::Execute([checkbox] {
+					checkbox->setSmoothTransform(false);
+				}),
+				Actions::Collection::ChangePivot(checkbox, { 0.0f, 0.0f }, 0.25f, Easing::CubicIn)
+			));
 		}
 
 		{
-			auto checkbox = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::Checkbox>>(*gui_holder);
+			auto checkbox = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::Checkbox>>(*gui_holder);
 			checkbox->setSize({ 96.0f, 24.0f });
 			checkbox->setAnchor({ 1.0f, 0.0f });
-			checkbox->setPivot({ 1.0f, 0.0f });
 			checkbox->setPosition({ -8.0f, 64.0f });
 			checkbox->getLabel()->setText("CENTERIZED");
 			checkbox->getLabel()->setFontSize(10.0f);
-			checkbox->getOuterRectangle()->setRounding(1.0f);
-			checkbox->getInnerRectangle()->setRounding(1.0f);
+			checkbox->getOuterRectangle()->setRounding(0.5f);
+			checkbox->getInnerRectangle()->setRounding(0.5f);
 			checkbox->setChecked(gameplay_view->getFollowingBackground());
 			checkbox->setChangeCallback([gameplay_view](bool checked) {
 				gameplay_view->setFollowingBackground(checked);
 			});
+			
+			if (IMSCENE->nodeJustSpawned())
+				checkbox->setPivot({ 0.0f, 0.0f });
+			else
+				checkbox->setPivot({ 1.0f, 0.0f });
+
+			IMSCENE->destroyAction(checkbox, Actions::Collection::MakeSequence(
+				Actions::Collection::Execute([checkbox] {
+					checkbox->setSmoothTransform(false);
+				}),
+				Actions::Collection::ChangePivot(checkbox, { 0.0f, 0.0f }, 0.25f, Easing::CubicIn)
+			));
 		}
 	}
-	else if (state != HL::BaseClient::State::Disconnected)
+	else if (state != HL::BaseClient::State::Disconnected && state != HL::BaseClient::State::GameStarted)
 	{
-		auto label = IMSCENE->attachTemporaryNode<Scene::Label>(*gameplay_holder);
+		auto label = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Scene::Label>>(*gameplay_holder);
 		label->setText("LOADING...");
 		label->setFontSize(32.0f);
 		label->setAnchor(0.5f);
 		label->setPivot(0.5f);
+
+		if (IMSCENE->nodeJustSpawned())
+			label->setScale(0.0f);
+		else
+			label->setScale(1.0f);
+
+		LoadingLabelIsAlive = true;
+
+		IMSCENE->destroyAction(label, Actions::Collection::MakeSequence(
+			Actions::Collection::Execute([label] {
+				label->setSmoothTransform(false);
+			}),
+			Actions::Collection::ChangeScale(label, { 0.0f, 0.0f }, 0.25f, Easing::CubicIn),
+			Actions::Collection::Execute([] {
+				LoadingLabelIsAlive = false;
+			})
+		));
 
 		const auto& channel = CLIENT->getChannel();
 		
@@ -410,14 +452,14 @@ void GameplayScreen::draw()
 
 				auto progress = static_cast<float>(completed_count) / static_cast<float>(total_count);
 				
-				auto progressbar = IMSCENE->attachTemporaryNode<Scene::ClippableStencil<Shared::SceneHelpers::Progressbar>>(*gameplay_holder);
+				auto progressbar = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Scene::ClippableStencil<Shared::SceneHelpers::Progressbar>>>(*gameplay_holder);
 				progressbar->setWidth(512.0f);
 				progressbar->setHeight(8.0f);
-				progressbar->setAnchor({ 0.5f, 0.5f });
+				progressbar->setAnchor(0.5f);
 				progressbar->setPivot(0.5f);
 				progressbar->setY(y + 32.0f);
 				progressbar->setRounding(1.0f);
-				progressbar->setSlicedSpriteOptimizationEnabled(false); // this enables nice clipping
+				progressbar->setSlicedSpriteOptimizationEnabled(false); // this enable nice clipping
 				progressbar->setProgress(Common::Helpers::SmoothValueAssign(progressbar->getProgress(), progress, dTime));
 			};
 
@@ -436,9 +478,9 @@ void GameplayScreen::draw()
 		}
 	}
 
-	if (state == HL::BaseClient::State::Disconnected)
+	if (state == HL::BaseClient::State::Disconnected && !gameplay_holder->hasNodes())
 	{
-		auto button = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
+		auto button = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
 		button->getLabel()->setText("CONNECT");
 		button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 18.0f, dTime));
 		button->setSize({ 192.0f, 48.0f });
@@ -451,18 +493,16 @@ void GameplayScreen::draw()
 	}
 	else
 	{
-		{
-			auto button = IMSCENE->attachTemporaryNode< Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
-			button->getLabel()->setText("DISCONNECT");
-			button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 10.0f, dTime));
-			button->setSize({ 96.0f, 24.0f });
-			button->setAnchor({ 1.0f, 0.0f });
-			button->setPivot({ 1.0f, 0.0f });
-			button->setPosition({ -8.0f, 8.0f });
-			button->setRounding(0.5f);
-			button->setClickCallback([] {
-				CONSOLE->execute("disconnect");
-			});
-		}
+		auto button = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
+		button->getLabel()->setText("DISCONNECT");
+		button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 10.0f, dTime));
+		button->setSize({ 96.0f, 24.0f });
+		button->setAnchor({ 1.0f, 0.0f });
+		button->setPivot({ 1.0f, 0.0f });
+		button->setPosition({ -8.0f, 8.0f });
+		button->setRounding(0.5f);
+		button->setClickCallback([] {
+			CONSOLE->execute("disconnect");
+		});
 	}
 }
