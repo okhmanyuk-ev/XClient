@@ -89,7 +89,7 @@ void AiClient::think(HL::Protocol::UserCmd& cmd)
 	cmd.buttons = 0;
 	cmd.viewangles = mPrevViewAngles;
 
-	setupBspIndicesAndOrigins();
+	synchronizeBspModel();
 	movement(cmd);
 
 	if (mWantJump && (isOnGround() || isOnLadder()))
@@ -117,7 +117,7 @@ void AiClient::think(HL::Protocol::UserCmd& cmd)
 	}
 }
 
-void AiClient::setupBspIndicesAndOrigins()
+void AiClient::synchronizeBspModel()
 {
 	mBspModelIndices.clear();
 	for (auto [index, entity] : getEntities())

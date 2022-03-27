@@ -75,7 +75,7 @@ private:
 	void initializeGame() override;
 	void resetGameResources() override;
 	void think(HL::Protocol::UserCmd& cmd);
-	void setupBspIndicesAndOrigins();
+	void synchronizeBspModel();
 	void movement(HL::Protocol::UserCmd& cmd);
 	glm::vec3 getFootOrigin() const;
 	std::optional<glm::vec3> getGroundFromOrigin(const glm::vec3& origin) const;
