@@ -306,7 +306,7 @@ void GameplayViewNode::touch(Touch type, const glm::vec2& pos)
 	if (CLIENT->getState() < HL::BaseClient::State::GameStarted)
 		return;
 
-	auto unprojected_pos = getBackgroundNode().lock()->unproject(pos);
+	auto unprojected_pos = getBackgroundNode()->unproject(pos);
 
 	auto target = screenToWorld(unprojected_pos);
 	CLIENT->setCustomMoveTarget(target);
@@ -317,7 +317,7 @@ void GameplayViewNode::touch(Touch type, const glm::vec2& pos)
 		circle->setPivot(0.5f);
 		circle->setPosition(unprojected_pos);
 		circle->setRadius(0.0f);
-		getBackgroundNode().lock()->attach(circle);
+		getBackgroundNode()->attach(circle);
 
 		const float AnimDuration = 1.0f;
 		const auto Easing = Easing::CubicOut;
@@ -392,9 +392,10 @@ void GameplayScreen::draw()
 			checkbox->getLabel()->setFontSize(10.0f);
 			checkbox->getOuterRectangle()->setRounding(0.5f);
 			checkbox->getInnerRectangle()->setRounding(0.5f);
-			checkbox->setChecked(gameplay_view->getFollowingBackground());
+			checkbox->setChecked(gameplay_view->isCenterized());
 			checkbox->setChangeCallback([gameplay_view](bool checked) {
-				gameplay_view->setFollowingBackground(checked);
+				gameplay_view->setCenterized(checked);
+				gameplay_view->setBackgroundZoom(checked ? 1.5f : 1.0f);
 			});
 			
 			if (IMSCENE->nodeJustSpawned())
