@@ -21,14 +21,6 @@ void GameplayViewNode::draw()
 	STATS_INDICATE_GROUP("clientdata", "origin", fmt::format("{:.0f} {:.0f} {:.0f}", clientdata.origin.x, clientdata.origin.y, clientdata.origin.z));
 	STATS_INDICATE_GROUP("clientdata", "flags", clientdata.flags);
 	STATS_INDICATE_GROUP("clientdata", "maxspeed", fmt::format("{:.0f}", clientdata.maxspeed));
-
-	auto following_background = getFollowingBackground();
-
-	ImGui::Begin("some settings");
-	ImGui::Checkbox("Following Background", &following_background);
-	ImGui::End();
-
-	setFollowingBackground(following_background);
 }
 
 void GameplayViewNode::drawOnBackground(Scene::Node& holder)
@@ -360,6 +352,38 @@ void GameplayScreen::draw()
 	{
 		auto gameplay_view = IMSCENE->attachTemporaryNode<GameplayViewNode>(*gameplay_holder);
 		gameplay_view->setStretch(1.0f);
+
+		{
+			auto checkbox = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::Checkbox>>(*gui_holder);
+			checkbox->setSize({ 96.0f, 24.0f });
+			checkbox->setAnchor({ 1.0f, 0.0f });
+			checkbox->setPivot({ 1.0f, 0.0f });
+			checkbox->setPosition({ -8.0f, 36.0f });
+			checkbox->getLabel()->setText("NAV");
+			checkbox->getLabel()->setFontSize(10.0f);
+			checkbox->getOuterRectangle()->setRounding(1.0f);
+			checkbox->getInnerRectangle()->setRounding(1.0f);
+			checkbox->setChecked(CLIENT->getUseNavMovement());
+			checkbox->setChangeCallback([](bool checked) {
+				CLIENT->setUseNavMovement(checked);
+			});
+		}
+
+		{
+			auto checkbox = IMSCENE->attachTemporaryNode<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::Checkbox>>(*gui_holder);
+			checkbox->setSize({ 96.0f, 24.0f });
+			checkbox->setAnchor({ 1.0f, 0.0f });
+			checkbox->setPivot({ 1.0f, 0.0f });
+			checkbox->setPosition({ -8.0f, 64.0f });
+			checkbox->getLabel()->setText("CENTERIZED");
+			checkbox->getLabel()->setFontSize(10.0f);
+			checkbox->getOuterRectangle()->setRounding(1.0f);
+			checkbox->getInnerRectangle()->setRounding(1.0f);
+			checkbox->setChecked(gameplay_view->getFollowingBackground());
+			checkbox->setChangeCallback([gameplay_view](bool checked) {
+				gameplay_view->setFollowingBackground(checked);
+			});
+		}
 	}
 	else if (state != HL::BaseClient::State::Disconnected)
 	{
@@ -438,24 +462,6 @@ void GameplayScreen::draw()
 			button->setRounding(0.5f);
 			button->setClickCallback([] {
 				CONSOLE->execute("disconnect");
-			});
-		}
-
-		{
-			auto button = IMSCENE->attachTemporaryNode< Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
-			if (CLIENT->getUseNavMovement())
-				button->getLabel()->setText("NAV");
-			else
-				button->getLabel()->setText("TRIVIAL");
-
-			button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 10.0f, dTime));
-			button->setSize({ 96.0f, 24.0f });
-			button->setAnchor({ 1.0f, 0.0f });
-			button->setPivot({ 1.0f, 0.0f });
-			button->setPosition({ -8.0f, 36.0f });
-			button->setRounding(0.5f);
-			button->setClickCallback([] {
-				CLIENT->setUseNavMovement(!CLIENT->getUseNavMovement());
 			});
 		}
 	}
