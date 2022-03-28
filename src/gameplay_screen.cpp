@@ -395,7 +395,6 @@ void GameplayScreen::draw()
 			checkbox->setChecked(gameplay_view->isCenterized());
 			checkbox->setChangeCallback([gameplay_view](bool checked) {
 				gameplay_view->setCenterized(checked);
-				gameplay_view->setBackgroundZoom(checked ? 1.5f : 1.0f);
 			});
 			
 			if (IMSCENE->justAllocated())
@@ -438,7 +437,7 @@ void GameplayScreen::draw()
 
 				auto progress = static_cast<float>(completed_count) / static_cast<float>(total_count);
 				
-				auto progressbar = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Scene::ClippableStencil<Shared::SceneHelpers::Progressbar>>>(*gameplay_holder);
+				auto progressbar = IMSCENE->spawn<Scene::ClippableStencil<Shared::SceneHelpers::Progressbar>>(*gameplay_holder);
 				progressbar->setWidth(512.0f);
 				progressbar->setHeight(8.0f);
 				progressbar->setAnchor(0.5f);
@@ -447,6 +446,7 @@ void GameplayScreen::draw()
 				progressbar->setRounding(1.0f);
 				progressbar->setSlicedSpriteOptimizationEnabled(false); // this enable nice clipping
 				progressbar->setProgress(Common::Helpers::SmoothValueAssign(progressbar->getProgress(), progress, dTime));
+				IMSCENE->showAndHideWithScale();
 			};
 
 			float y = 0.0f;
