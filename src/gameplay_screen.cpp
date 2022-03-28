@@ -348,13 +348,13 @@ void GameplayScreen::draw()
 	auto state = CLIENT->getState();
 	auto dTime = FRAME->getTimeDelta();
 
-	static bool LoadingLabelIsAlive = false;
+	static std::weak_ptr<Scene::Node> LoadingLabel;
 
-	if (state == HL::BaseClient::State::GameStarted && !LoadingLabelIsAlive)
+	if (state == HL::BaseClient::State::GameStarted && LoadingLabel.expired())
 	{
 		auto gameplay_view = IMSCENE->spawn<GameplayViewNode>(*gameplay_holder);
 		gameplay_view->setStretch(1.0f);
-		IMSCENE->dontKillUntilHaveChilds(gameplay_view);
+		IMSCENE->dontKillUntilHaveChilds();
 
 		{
 			auto checkbox = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::Checkbox>>(*gui_holder);
@@ -370,12 +370,12 @@ void GameplayScreen::draw()
 				CLIENT->setUseNavMovement(checked);
 			});
 
-			if (IMSCENE->nodeJustSpawned())
+			if (IMSCENE->justAllocated())
 				checkbox->setPivot({ 0.0f, 0.0f });
 			else
 				checkbox->setPivot({ 1.0f, 0.0f });
 
-			IMSCENE->destroyAction(checkbox, Actions::Collection::MakeSequence(
+			IMSCENE->destroyAction(Actions::Collection::MakeSequence(
 				Actions::Collection::Execute([checkbox] {
 					checkbox->setSmoothTransform(false);
 				}),
@@ -398,12 +398,12 @@ void GameplayScreen::draw()
 				gameplay_view->setBackgroundZoom(checked ? 1.5f : 1.0f);
 			});
 			
-			if (IMSCENE->nodeJustSpawned())
+			if (IMSCENE->justAllocated())
 				checkbox->setPivot({ 0.0f, 0.0f });
 			else
 				checkbox->setPivot({ 1.0f, 0.0f });
 
-			IMSCENE->destroyAction(checkbox, Actions::Collection::MakeSequence(
+			IMSCENE->destroyAction(Actions::Collection::MakeSequence(
 				Actions::Collection::Execute([checkbox] {
 					checkbox->setSmoothTransform(false);
 				}),
@@ -413,28 +413,13 @@ void GameplayScreen::draw()
 	}
 	else if (state != HL::BaseClient::State::Disconnected && state != HL::BaseClient::State::GameStarted)
 	{
-		auto label = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Scene::Label>>(*gameplay_holder);
+		auto label = IMSCENE->spawn<Scene::Label>(*gameplay_holder);
 		label->setText("LOADING...");
 		label->setFontSize(32.0f);
 		label->setAnchor(0.5f);
 		label->setPivot(0.5f);
-
-		if (IMSCENE->nodeJustSpawned())
-			label->setScale(0.0f);
-		else
-			label->setScale(1.0f);
-
-		LoadingLabelIsAlive = true;
-
-		IMSCENE->destroyAction(label, Actions::Collection::MakeSequence(
-			Actions::Collection::Execute([label] {
-				label->setSmoothTransform(false);
-			}),
-			Actions::Collection::ChangeScale(label, { 0.0f, 0.0f }, 0.25f, Easing::CubicIn),
-			Actions::Collection::Execute([] {
-				LoadingLabelIsAlive = false;
-			})
-		));
+		IMSCENE->showAndHideWithScale();
+		LoadingLabel = label;
 
 		const auto& channel = CLIENT->getChannel();
 		
