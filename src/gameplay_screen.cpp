@@ -446,7 +446,6 @@ void GameplayScreen::draw()
 				progressbar->setRounding(1.0f);
 				progressbar->setSlicedSpriteOptimizationEnabled(false); // this enable nice clipping
 				progressbar->setProgress(Common::Helpers::SmoothValueAssign(progressbar->getProgress(), progress, dTime));
-				IMSCENE->showAndHideWithScale();
 			};
 
 			float y = 0.0f;
