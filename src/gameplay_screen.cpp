@@ -211,40 +211,44 @@ void GameplayViewNode::draw3dNavMesh(std::shared_ptr<Renderer::RenderTarget> tar
 	GRAPHICS->pushDepthMode(Renderer::ComparisonFunc::Less);
 	
 	const auto& nav = CLIENT->getNavMesh();
-
-	static auto builder = Graphics::MeshBuilder();
-	builder.begin();
-
-	for (auto area : nav.areas)
+	
+	if (!nav.areas.empty())
 	{
-		auto v1 = area->position;
-		auto v2 = v1 + glm::vec3{ 0.0f, 0.0f, 8.0f };
+		static auto builder = Graphics::MeshBuilder();
+		builder.begin();
 
-		builder.color(Graphics::Color::Blue);
-		builder.vertex(v1);
-		builder.vertex(v2);
-
-		for (auto dir : { NavDirection::Forward, NavDirection::Right })
+		for (auto area : nav.areas)
 		{
-			if (!area->neighbours.contains(dir))
-				continue;
+			auto v1 = area->position;
+			auto v2 = v1 + glm::vec3{ 0.0f, 0.0f, 8.0f };
 
-			auto neighbour = area->neighbours.at(dir);
-
-			if (!neighbour.has_value())
-				continue;
-
-			auto v3 = neighbour.value().lock()->position + glm::vec3{ 0.0f, 0.0f, 8.0f };
-
-			builder.color(Graphics::Color::Yellow);
+			builder.color(Graphics::Color::Blue);
+			builder.vertex(v1);
 			builder.vertex(v2);
-			builder.vertex(v3);
+
+			for (auto dir : { NavDirection::Forward, NavDirection::Right })
+			{
+				if (!area->neighbours.contains(dir))
+					continue;
+
+				auto neighbour = area->neighbours.at(dir);
+
+				if (!neighbour.has_value())
+					continue;
+
+				auto v3 = neighbour.value().lock()->position + glm::vec3{ 0.0f, 0.0f, 8.0f };
+
+				builder.color(Graphics::Color::Yellow);
+				builder.vertex(v2);
+				builder.vertex(v3);
+			}
 		}
+
+		auto [vertices, count] = builder.end();
+
+		GRAPHICS->draw(Renderer::Topology::LineList, vertices, count);
 	}
-
-	auto [vertices, count] = builder.end();
-
-	GRAPHICS->draw(Renderer::Topology::LineList, vertices, count);
+	
 	GRAPHICS->pop(6);
 	GRAPHICS->setBatching(prev_batching);
 }		
@@ -258,6 +262,9 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 			return;
 
 		const auto& nav = CLIENT->getNavMesh();
+
+		if (nav.areas.empty())
+			return;
 
 		static auto builder = Graphics::MeshBuilder();
 		builder.begin();
@@ -294,6 +301,9 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 		}
 
 		auto [vertices, count] = builder.end();
+
+		if (count == 0)
+			return;
 
 		GRAPHICS->draw(Renderer::Topology::LineList, vertices, count);
 	});
