@@ -5,8 +5,15 @@ using namespace XClient;
 
 Application::Application() : Shared::Application(PROJECT_NAME, { Flag::Network, Flag::Scene, Flag::Audio })
 {
-	PLATFORM->resize(640, 360);
+	PLATFORM->setTitle(PRODUCT_NAME);
+#if defined(PLATFORM_MAC)
+	PLATFORM->resize(1440, 720);
+#else
+	PLATFORM->resize(720, 360);
+#endif
+#if defined(PLATFORM_WINDOWS)
 	PLATFORM->rescale(1.5f);
+#endif
 
 	ImGui::User::SetupStyleFromColor(0.5, 1.0, 0.5);
 
