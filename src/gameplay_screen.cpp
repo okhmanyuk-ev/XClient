@@ -474,15 +474,35 @@ void GameplayScreen::draw()
 
 	if (state == HL::BaseClient::State::Disconnected && !gameplay_holder->hasNodes())
 	{
+		auto editbox = IMSCENE->spawn<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::Editbox>>(*gui_holder);
+		editbox->setRounding(0.5f);
+		editbox->setSize({ 192.0f, 32.0f });
+		editbox->setAnchor(0.5);
+		editbox->setPivot(0.5f);
+		editbox->setY(-24.0f);
+		IMSCENE->showAndHideWithScale();
+		if (IMSCENE->justAllocated())
+		{
+			editbox->getLabel()->setText("192.168.0.106:27015");
+		}
+
 		auto button = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
+		if (IMSCENE->justAllocated())
+		{
+			button->getLabel()->setFontSize(18.0f);
+		}
 		button->getLabel()->setText("CONNECT");
 		button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 18.0f, dTime));
 		button->setSize({ 192.0f, 48.0f });
-		button->setAnchor({ 0.5f, 0.5f });
-		button->setPivot({ 0.5f, 0.5f });
+		button->setAnchor(0.5f);
+		button->setPivot(0.5f);
 		button->setRounding(0.5f);
-		button->setClickCallback([] {
-			CONSOLE->execute("connect 192.168.0.106:27015");
+		button->setPosition({ 0.0f, 24.0f });
+		button->setClickCallback([editbox = std::weak_ptr(editbox)] {
+			if (editbox.expired())
+				return;
+
+			CONSOLE->execute("connect " + editbox.lock()->getLabel()->getText().cpp_str());
 		});
 	}
 	else
