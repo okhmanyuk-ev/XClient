@@ -1,6 +1,6 @@
 [submodule "sky"]
 	path = sky
-	url = git@gitlab.com:okhmanyuk_ev/sky.git
+	url = git@github.com:okhmanyuk-ev/sky.git
 [submodule "hl"]
 	path = hl
-	url = git@gitlab.com:okhmanyuk_ev/hl.git
+	url = git@github.com:okhmanyuk-ev/hl.git
