@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(XClient)
+project(xclient)
 
 set(PRODUCT_NAME "XClient")
 
@@ -27,69 +27,74 @@ file(GLOB ALL_SRC
 )
 
 if(WIN32)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
-    add_definitions(-DNOMINMAX)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+	add_definitions(-DNOMINMAX)
 	
-    add_executable(${PROJECT_NAME} 
-        ${ALL_SRC}
-    )
+	add_executable(${PROJECT_NAME} 
+		${ALL_SRC}
+	)
 
-    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
-    set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
+	set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 elseif(APPLE)
-    set(CMAKE_MACOSX_BUNDLE YES)
-    set(CMAKE_OSX_SYSROOT iphoneos)
-    set(CMAKE_XCODE_BUILD_SYSTEM 12)
+	set(CMAKE_MACOSX_BUNDLE YES)
 
-    file(GLOB IOS_SRC 
-        ios/*.m
-        ios/*.mm
-        ios/*.h
-    )
+	if(BUILD_PLATFORM_MAC)
+		set(RESOURCES
+			assets
+		)
 
-    source_group("all" FILES ${IOS_SRC})
+		add_executable(${PROJECT_NAME}
+			${ALL_SRC}
+			${RESOURCES}
+		)
 
-    set(RESOURCES
-        ios/LaunchScreen.storyboard
-        ios/Images.xcassets
-        assets
-    )
+		set_target_properties(${PROJECT_NAME} PROPERTIES RESOURCE ${RESOURCES})
+	else()
+		set(CMAKE_OSX_SYSROOT iphoneos)
 
-    set(OBJC_SOURCES
-        src/application.cpp
-    )
-    set_source_files_properties(${OBJC_SOURCES} PROPERTIES COMPILE_FLAGS "-x objective-c++ -fembed-bitcode")
+		file(GLOB IOS_SRC
+			ios/*.m
+			ios/*.mm
+			ios/*.h
+		)
 
-    add_executable(${PROJECT_NAME} 
-        ${ALL_SRC}
-        ${IOS_SRC}
-        ${RESOURCES}
-    )
+		source_group("all" FILES ${IOS_SRC})
 
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        RESOURCE "${RESOURCES}"
-        XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "12.0"
-        XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "iPhone Developer"
-        XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "69RWHMDZA7"
-        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.dreamskies.${PROJECT_NAME}"
-        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
-        XCODE_ATTRIBUTE_ENABLE_BITCODE "NO"
-        XCODE_ATTRIBUTE_INSTALL_PATH "/Applications"
-        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
-        XCODE_ATTRIBUTE_PRODUCT_NAME "${PRODUCT_NAME}"
-        XCODE_ATTRIBUTE_FRAMEWORK_SEARCH_PATHS "ios/frameworks"
-        XCODE_ATTRIBUTE_COPY_PHASE_STRIP "NO"
-        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist
-    )
+		set(RESOURCES
+			ios/LaunchScreen.storyboard
+			ios/Images.xcassets
+			assets
+		)
 
-    #target_link_libraries(${PROJECT_NAME}
-    #    "-framework FBSDKCoreKit"
-    #    "-framework FBSDKLoginKit"
-    #    "-framework FBSDKShareKit"
-    #)
+		set(OBJC_SOURCES
+			src/application.cpp
+		)
+		set_source_files_properties(${OBJC_SOURCES} PROPERTIES COMPILE_FLAGS "-x objective-c++ -fembed-bitcode")
 
+		add_executable(${PROJECT_NAME}
+			${ALL_SRC}
+			${IOS_SRC}
+			${RESOURCES}
+		)
+
+		set_target_properties(${PROJECT_NAME} PROPERTIES
+			RESOURCE "${RESOURCES}"
+			XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "12.0"
+			XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "iPhone Developer"
+			XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "69RWHMDZA7"
+			XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.dreamskies.${PROJECT_NAME}"
+			XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+			XCODE_ATTRIBUTE_ENABLE_BITCODE "NO"
+			XCODE_ATTRIBUTE_INSTALL_PATH "/Applications"
+			XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
+			XCODE_ATTRIBUTE_PRODUCT_NAME "${PRODUCT_NAME}"
+			XCODE_ATTRIBUTE_FRAMEWORK_SEARCH_PATHS "ios/frameworks"
+			MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist
+		)
+	endif()
 elseif(ANDROID)
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 
 	add_library(${PROJECT_NAME} SHARED
 		${ALL_SRC}

@@ -72,7 +72,7 @@ void GameplayViewNode::drawTrivialMovement(Scene::Node& holder)
 	auto node = IMSCENE->spawn<HL::GenericDrawNode>(holder);
 	node->setStretch(1.0f);
 	node->setDrawCallback([node, start_scr, mid_scr, end_scr] {
-		GRAPHICS->draw(Renderer::Topology::LineList, {
+		GRAPHICS->draw(skygfx::Topology::LineList, {
 			{ { start_scr, 0.0f }, { Graphics::Color::Lime, 1.0f } },
 			{ { mid_scr, 0.0f }, { Graphics::Color::Lime, 1.0f } },
 			{ { mid_scr, 0.0f }, { Graphics::Color::Red, 1.0f } },
@@ -161,7 +161,7 @@ void GameplayViewNode::drawNavMovement(Scene::Node& holder)
 
 		auto [vertices, count] = builder.end();
 
-		GRAPHICS->draw(Renderer::Topology::LineList, vertices, count);
+		GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
 	});
 
 	auto circle = IMSCENE->spawn<Scene::Circle>(holder);
@@ -184,12 +184,12 @@ void GameplayViewNode::draw3dView()
 	draw3dNavMesh(target, pos, angles);
 
 	ImGui::Begin("3D View");
-	auto width = ImGui::GetContentRegionAvailWidth();
+	auto width = ImGui::GetContentRegionAvail().x;
 	Shared::SceneEditor::drawImage(target, std::nullopt, width);
 	ImGui::End();
 }
 
-void GameplayViewNode::draw3dNavMesh(std::shared_ptr<Renderer::RenderTarget> target, const glm::vec3& pos, const glm::vec3& angles)
+void GameplayViewNode::draw3dNavMesh(std::shared_ptr<skygfx::RenderTarget> target, const glm::vec3& pos, const glm::vec3& angles)
 {
 	static auto camera = std::make_shared<Graphics::Camera3D>();
 	camera->setWorldUp({ 0.0f, 0.0f, 1.0f });
@@ -207,8 +207,7 @@ void GameplayViewNode::draw3dNavMesh(std::shared_ptr<Renderer::RenderTarget> tar
 	GRAPHICS->pushViewMatrix(view);
 	GRAPHICS->pushProjectionMatrix(projection);
 	GRAPHICS->pushRenderTarget(target);
-	GRAPHICS->pushViewport(target);
-	GRAPHICS->pushDepthMode(Renderer::ComparisonFunc::Less);
+	GRAPHICS->pushDepthMode(skygfx::ComparisonFunc::Less);
 	
 	const auto& nav = CLIENT->getNavMesh();
 	
@@ -246,10 +245,10 @@ void GameplayViewNode::draw3dNavMesh(std::shared_ptr<Renderer::RenderTarget> tar
 
 		auto [vertices, count] = builder.end();
 
-		GRAPHICS->draw(Renderer::Topology::LineList, vertices, count);
+		GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
 	}
 	
-	GRAPHICS->pop(6);
+	GRAPHICS->pop(5);
 	GRAPHICS->setBatching(prev_batching);
 }		
 
@@ -305,7 +304,7 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 		if (count == 0)
 			return;
 
-		GRAPHICS->draw(Renderer::Topology::LineList, vertices, count);
+		GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
 	});
 }
 

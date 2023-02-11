@@ -23,7 +23,7 @@ namespace XClient
 		void drawTrivialMovement(Scene::Node& holder);
 		void drawNavMovement(Scene::Node& holder);
 		void draw3dView();
-		void draw3dNavMesh(std::shared_ptr<Renderer::RenderTarget> target, const glm::vec3& pos, const glm::vec3& angles);
+		void draw3dNavMesh(std::shared_ptr<skygfx::RenderTarget> target, const glm::vec3& pos, const glm::vec3& angles);
 		void draw2dNavMesh(Scene::Node& holder);
 
 	private:
