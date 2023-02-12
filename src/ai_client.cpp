@@ -536,7 +536,11 @@ AiClient::MovementStatus AiClient::moveToCustomTarget(HL::Protocol::UserCmd& cmd
 		return MovementStatus::Finished;
 	}
 
-	auto ground = getGroundFromOrigin(getOrigin());
+	auto origin = getOrigin();
+	origin.x = origin.x - glm::mod(origin.x, NavStep);
+	origin.y = origin.y - glm::mod(origin.y, NavStep);
+
+	auto ground = getGroundFromOrigin(origin);
 
 	if (!ground.has_value())
 		return MovementStatus::Processing;

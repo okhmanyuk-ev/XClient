@@ -27,7 +27,6 @@ struct NavMesh
 
 using NavChain = std::list<std::shared_ptr<NavArea>>;
 
-
 const std::vector<NavDirection> Directions = {
 	NavDirection::Forward,
 	NavDirection::Left,

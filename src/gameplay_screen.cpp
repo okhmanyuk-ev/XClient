@@ -268,11 +268,19 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 		static auto builder = Graphics::MeshBuilder();
 		builder.begin();
 
+		using NavAreaIndex = size_t;
+
+		std::unordered_set<NavAreaIndex> blacklist;
+
 		for (auto area : nav.areas)
 		{
 			auto v1 = area->position;
 
-			for (auto dir : { NavDirection::Forward, NavDirection::Right })
+			auto area_index = reinterpret_cast<NavAreaIndex>(area.get());
+
+			blacklist.insert(area_index);
+
+			for (auto dir : Directions)
 			{
 				if (!area->neighbours.contains(dir))
 					continue;
@@ -283,8 +291,13 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 					continue;
 
 				auto neighbour_nn = neighbour.value().lock();
+				auto neighbour_index = reinterpret_cast<NavAreaIndex>(neighbour_nn.get());
+
+				if (blacklist.contains(neighbour_index))
+					continue;
 
 				auto opposite_dir = OppositeDirections.at(dir);
+
 				if (!neighbour_nn->neighbours.contains(opposite_dir))
 					builder.color({ Graphics::Color::Red, 0.5f });
 				else if (!neighbour_nn->neighbours.at(opposite_dir).has_value())
