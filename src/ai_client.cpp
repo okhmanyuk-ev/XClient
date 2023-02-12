@@ -63,8 +63,8 @@ void AiClient::initializeGame()
 	const auto& info = getServerInfo().value();
     mBspFile.loadFromFile(info.game_dir + "/" + info.map, false);
 
-	CONSOLE->execute("delay 1 'cmd \"jointeam 2\"'");
-	CONSOLE->execute("delay 2 'cmd \"joinclass 6\"'");
+	CONSOLE->execute("later 1 'cmd \"jointeam 2\"'");
+	CONSOLE->execute("later 2 'cmd \"joinclass 6\"'");
 }
 
 void AiClient::resetGameResources()

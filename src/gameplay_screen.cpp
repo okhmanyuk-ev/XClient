@@ -344,7 +344,6 @@ void GameplayViewNode::touch(Touch type, const glm::vec2& pos)
 
 GameplayScreen::GameplayScreen()
 {
-	//
 }
 
 void GameplayScreen::draw()
@@ -483,7 +482,8 @@ void GameplayScreen::draw()
 		IMSCENE->showAndHideWithScale();
 		if (IMSCENE->justAllocated())
 		{
-			editbox->getLabel()->setText("192.168.0.106:27015");
+		//	editbox->getLabel()->setText("192.168.0.106:27015");
+			editbox->getLabel()->setText("127.0.0.1:27015");
 		}
 
 		auto button = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
