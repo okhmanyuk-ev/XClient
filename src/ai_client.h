@@ -59,9 +59,9 @@ private:
 	const float JumpCooldownSeconds = 1.0f; // we should not bunnyhopping, because next jumps are not high
 
 	const float NavStep = PlayerWidth * 1.0f;
-	const float NavField = 512.0f;
+	const float NavField = 256.0f;
 
-	const float TrivialMovementMinDistance = PlayerWidth / 2.0f;
+	const float TrivialMovementMinDistance = PlayerWidth * 0.75f;
 
 public:
 	AiClient();

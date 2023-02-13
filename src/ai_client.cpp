@@ -511,12 +511,14 @@ AiClient::MovementStatus AiClient::navMoveTo(HL::Protocol::UserCmd& cmd, const g
 		mNavChain.reverse();
 	}
 
+	auto foot_origin = getFootOrigin();
+
 	while (!mNavChain.empty())
 	{
-		auto foot_origin = getFootOrigin();
 		auto pos = mNavChain.front()->position;
+		auto distance_to_next_point = glm::distance(foot_origin, pos);
 
-		if (glm::distance(foot_origin, pos) >= PlayerWidth * 2.0f)
+		if (distance_to_next_point >= PlayerWidth * 2.0f)
 			break;
 
 		mNavChain.pop_front();
