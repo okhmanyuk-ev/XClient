@@ -28,6 +28,7 @@ Application::Application() : Shared::Application(PROJECT_NAME, { Flag::Network, 
 	CONSOLE->execute("r_vsync 1");
 	//CONSOLE->execute("hud_show_ents 1"); // feel free to uncomment
 
+	CONSOLE->execute("later 3 'connect 127.0.0.1:27015'");
 	SCENE_MANAGER->switchScreen(std::make_shared<GameplayScreen>());
 
 	STATS->setAlignment(Shared::StatsSystem::Align::BottomRight);

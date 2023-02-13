@@ -15,6 +15,7 @@ struct NavArea
 {
 	glm::vec3 position = { 0.0f, 0.0f, 0.0f };
 	std::map<NavDirection, std::optional<std::weak_ptr<NavArea>>> neighbours;
+	bool isExplored() const;
 };
 
 struct NavMesh
@@ -124,7 +125,7 @@ private:
 	MovementStatus navMoveTo(HL::Protocol::UserCmd& cmd, const glm::vec3& target);
 	MovementStatus avoidOtherPlayers(HL::Protocol::UserCmd& cmd);
 	MovementStatus moveToCustomTarget(HL::Protocol::UserCmd& cmd);
-
+	MovementStatus exploreNewAreas(HL::Protocol::UserCmd& cmd);
 	
 private:
 	enum class BuildNavMeshStatus
@@ -133,11 +134,9 @@ private:
 		Processing
 	};
 
+	BuildNavMeshStatus buildNavMesh();
 	BuildNavMeshStatus buildNavMesh(const glm::vec3& start_ground_point);
 	BuildNavMeshStatus buildNavMesh(std::shared_ptr<NavArea> base_area);
-	void clearNavMesh();
-	void removeNavArea(std::shared_ptr<NavArea> area);
-	void removeFarNavAreas();
 	NavChain buildNavChain(std::shared_ptr<NavArea> src_area, std::shared_ptr<NavArea> dst_area);
 
 public:
@@ -160,6 +159,7 @@ private:
 	Clock::TimePoint mLastAirTime = Clock::Now();
 	NavMesh mNavMesh;
 	NavChain mNavChain;
+	glm::vec3 mNavChainTarget;
 	bool mUseNavMovement = true;
 	float mNavField = NavField;
 	float mNavStep = NavStep;
