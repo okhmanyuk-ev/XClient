@@ -16,6 +16,7 @@ struct NavArea
 	glm::vec3 position = { 0.0f, 0.0f, 0.0f };
 	std::map<NavDirection, std::optional<std::weak_ptr<NavArea>>> neighbours;
 	bool isExplored() const;
+	bool isBorder() const;
 };
 
 struct NavMesh

@@ -7,6 +7,23 @@ bool NavArea::isExplored() const
 	return neighbours.size() == Directions.size();
 }
 
+bool NavArea::isBorder() const
+{
+	assert(isExplored());
+
+	for (auto dir : Directions)
+	{
+		auto neighbour = neighbours.at(dir);
+
+		if (neighbour.has_value() && neighbour.value().lock()->isExplored())
+			continue;
+
+		return true;
+	}
+
+	return false;
+}
+
 std::shared_ptr<NavArea> NavMesh::FindNearestArea(const AreaSet& areas, const glm::vec3& pos)
 {
 	float min_distance = 8192.0f;

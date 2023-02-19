@@ -271,64 +271,93 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 			return;
 
 		const auto& nav = CLIENT->getNavMesh();
-		const auto& areas = mDraw2dNavmesh == 1 ? nav.explored_areas : nav.unexplored_areas;
 
-		if (areas.empty())
-			return;
-
-		static auto builder = Graphics::MeshBuilder();
-		builder.begin();
-
-		using NavAreaIndex = size_t;
-
-		std::unordered_set<NavAreaIndex> blacklist;
-
-		for (auto area : areas)
+		if (mDraw2dNavmesh == 1)
 		{
-			auto v1 = area->position;
+			NavMesh::AreaSet borders;
 
-			auto area_index = reinterpret_cast<NavAreaIndex>(area.get());
-
-			blacklist.insert(area_index);
-
-			for (auto dir : Directions)
+			for (auto area : nav.explored_areas)
 			{
-				if (!area->neighbours.contains(dir))
+				if (!area->isBorder())
 					continue;
 
-				auto neighbour = area->neighbours.at(dir);
+				borders.insert(area);
+			}
 
-				if (!neighbour.has_value())
-					continue;
+			for (auto area : borders)
+			{
+				auto scr_pos = worldToScreen(area->position);
 
-				auto neighbour_nn = neighbour.value().lock();
-				auto neighbour_index = reinterpret_cast<NavAreaIndex>(neighbour_nn.get());
+				auto model = getTransform();
+				model = glm::translate(model, { scr_pos, 0.0f });
+				model = glm::scale(model, { 2.0f, 2.0f, 1.0f });
 
-				if (blacklist.contains(neighbour_index))
-					continue;
-
-				auto opposite_dir = OppositeDirections.at(dir);
-
-				if (!neighbour_nn->neighbours.contains(opposite_dir))
-					builder.color({ Graphics::Color::Red, 0.5f });
-				else if (!neighbour_nn->neighbours.at(opposite_dir).has_value())
-					builder.color({ Graphics::Color::Blue, 0.5f });
-				else
-					builder.color({ Graphics::Color::White, 0.5f });
-
-				auto v2 = neighbour_nn->position;
-
-				builder.vertex(worldToScreen(v1));
-				builder.vertex(worldToScreen(v2));
+				GRAPHICS->pushModelMatrix(model);
+				GRAPHICS->drawCircle({ Graphics::Color::Lime, 1.0f });
+				GRAPHICS->pop();
 			}
 		}
+		else
+		{
+			const auto& areas = mDraw2dNavmesh == 2 ? nav.explored_areas : nav.unexplored_areas;
 
-		auto [vertices, count] = builder.end();
+			if (areas.empty())
+				return;
 
-		if (count == 0)
-			return;
+			static auto builder = Graphics::MeshBuilder();
+			builder.begin();
 
-		GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
+			using NavAreaIndex = size_t;
+
+			std::unordered_set<NavAreaIndex> blacklist;
+
+			for (auto area : areas)
+			{
+				auto v1 = area->position;
+
+				auto area_index = reinterpret_cast<NavAreaIndex>(area.get());
+
+				blacklist.insert(area_index);
+
+				for (auto dir : Directions)
+				{
+					if (!area->neighbours.contains(dir))
+						continue;
+
+					auto neighbour = area->neighbours.at(dir);
+
+					if (!neighbour.has_value())
+						continue;
+
+					auto neighbour_nn = neighbour.value().lock();
+					auto neighbour_index = reinterpret_cast<NavAreaIndex>(neighbour_nn.get());
+
+					if (blacklist.contains(neighbour_index))
+						continue;
+
+					auto opposite_dir = OppositeDirections.at(dir);
+
+					if (!neighbour_nn->neighbours.contains(opposite_dir))
+						builder.color({ Graphics::Color::Red, 0.5f });
+					else if (!neighbour_nn->neighbours.at(opposite_dir).has_value())
+						builder.color({ Graphics::Color::Blue, 0.5f });
+					else
+						builder.color({ Graphics::Color::White, 0.5f });
+
+					auto v2 = neighbour_nn->position;
+
+					builder.vertex(worldToScreen(v1));
+					builder.vertex(worldToScreen(v2));
+				}
+			}
+
+			auto [vertices, count] = builder.end();
+
+			if (count == 0)
+				return;
+
+			GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
+		}
 	});
 }
 
