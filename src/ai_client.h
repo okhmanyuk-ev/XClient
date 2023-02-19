@@ -63,7 +63,7 @@ private:
 	const float JumpCooldownSeconds = 1.0f; // we should not bunnyhopping, because next jumps are not high
 
 	const float NavStep = PlayerWidth * 1.0f;
-	const float NavField = 256.0f;
+	const float NavExploreDistance = 256.0f;
 
 	const float TrivialMovementMinDistance = PlayerWidth * 0.75f;
 
@@ -171,7 +171,7 @@ private:
 	NavChain mNavChain;
 	glm::vec3 mNavChainTarget;
 	bool mUseNavMovement = true;
-	float mNavField = NavField;
+	float mNavExploreDistance = NavExploreDistance;
 	float mNavStep = NavStep;
 	std::set<int> mBspModelIndices;
 };

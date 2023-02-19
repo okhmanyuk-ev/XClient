@@ -68,7 +68,7 @@ AiClient::AiClient()
 		return false;
 	});
 
-	CONSOLE->registerCVar("ai_nav_field", { "float" }, CVAR_GETTER_FLOAT(mNavField), CVAR_SETTER_FLOAT(mNavField));
+	CONSOLE->registerCVar("ai_nav_explore_distance", { "float" }, CVAR_GETTER_FLOAT(mNavExploreDistance), CVAR_SETTER_FLOAT(mNavExploreDistance));
 	CONSOLE->registerCVar("ai_nav_step", { "float" }, CVAR_GETTER_FLOAT(mNavStep), CVAR_SETTER_FLOAT(mNavStep));
 }
 
@@ -736,7 +736,7 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_groun
 
 			auto neighbour_nn = neighbour.value().lock();
 
-			if (getDistance(neighbour_nn->position) > mNavField)
+			if (getDistance(neighbour_nn->position) > mNavExploreDistance)
 				continue;
 
 			open_list.push_front(neighbour_nn);
