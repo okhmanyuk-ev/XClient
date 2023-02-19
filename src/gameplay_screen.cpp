@@ -180,7 +180,7 @@ void GameplayViewNode::draw3dView()
 	static auto pos = glm::vec3{};
 	pos = Common::Helpers::SmoothValueAssign(pos, CLIENT->getOrigin(), FRAME->getTimeDelta());
 	auto angles = CLIENT->getAngles();
-	mBspDraw.value().second->draw(target, pos, angles);
+	mBspDraw.value().second->draw(target, pos, glm::radians(angles.x), glm::radians(angles.y));
 	draw3dNavMesh(target, pos, angles);
 
 	ImGui::Begin("3D View");
