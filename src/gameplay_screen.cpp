@@ -8,7 +8,7 @@ GameplayViewNode::GameplayViewNode() : HL::GameplayViewNode(CLIENT)
 	setTouchable(true);
 
 	CONSOLE->registerCVar("r_draw_3d_bsp", { "bool" }, CVAR_GETTER_BOOL(mDraw3dBsp), CVAR_SETTER_BOOL(mDraw3dBsp));
-	CONSOLE->registerCVar("r_draw_2d_navmesh", { "bool" }, CVAR_GETTER_BOOL(mDraw2dNavmesh), CVAR_SETTER_BOOL(mDraw2dNavmesh));
+	CONSOLE->registerCVar("r_draw_2d_navmesh", { "int" }, CVAR_GETTER_INT(mDraw2dNavmesh), CVAR_SETTER_INT(mDraw2dNavmesh));
 }
 
 GameplayViewNode::~GameplayViewNode()
@@ -218,12 +218,12 @@ void GameplayViewNode::draw3dNavMesh(std::shared_ptr<skygfx::RenderTarget> targe
 	
 	const auto& nav = CLIENT->getNavMesh();
 	
-	if (!nav.areas.empty())
+	if (!nav.explored_areas.empty())
 	{
 		static auto builder = Graphics::MeshBuilder();
 		builder.begin();
 
-		for (auto area : nav.areas)
+		for (auto area : nav.explored_areas)
 		{
 			auto v1 = area->position;
 			auto v2 = v1 + glm::vec3{ 0.0f, 0.0f, 8.0f };
@@ -261,7 +261,7 @@ void GameplayViewNode::draw3dNavMesh(std::shared_ptr<skygfx::RenderTarget> targe
 
 void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 {
-	if (!mDraw2dNavmesh)
+	if (mDraw2dNavmesh == 0)
 		return;
 
 	auto node = IMSCENE->spawn<HL::GenericDrawNode>(holder);
@@ -271,8 +271,9 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 			return;
 
 		const auto& nav = CLIENT->getNavMesh();
+		const auto& areas = mDraw2dNavmesh == 1 ? nav.explored_areas : nav.unexplored_areas;
 
-		if (nav.areas.empty())
+		if (areas.empty())
 			return;
 
 		static auto builder = Graphics::MeshBuilder();
@@ -282,7 +283,7 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 
 		std::unordered_set<NavAreaIndex> blacklist;
 
-		for (auto area : nav.areas)
+		for (auto area : areas)
 		{
 			auto v1 = area->position;
 

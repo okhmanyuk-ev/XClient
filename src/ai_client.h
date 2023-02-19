@@ -20,10 +20,13 @@ struct NavArea
 
 struct NavMesh
 {
-	std::unordered_set<std::shared_ptr<NavArea>> areas;
+	using AreaSet = std::unordered_set<std::shared_ptr<NavArea>>;
 
-	std::shared_ptr<NavArea> findNearestArea(const glm::vec3& pos) const;
-	std::shared_ptr<NavArea> findExactArea(const glm::vec3& pos, float tolerance) const;
+	AreaSet explored_areas;
+	AreaSet unexplored_areas;
+
+	static std::shared_ptr<NavArea> FindNearestArea(const AreaSet& areas, const glm::vec3& pos);
+	static std::shared_ptr<NavArea> FindExactArea(const AreaSet& areas, const glm::vec3& pos, float tolerance);
 };
 
 using NavChain = std::list<std::shared_ptr<NavArea>>;

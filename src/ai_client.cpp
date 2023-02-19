@@ -7,7 +7,7 @@ bool NavArea::isExplored() const
 	return neighbours.size() == Directions.size();
 }
 
-std::shared_ptr<NavArea> NavMesh::findNearestArea(const glm::vec3& pos) const
+std::shared_ptr<NavArea> NavMesh::FindNearestArea(const AreaSet& areas, const glm::vec3& pos)
 {
 	float min_distance = 8192.0f;
 	std::shared_ptr<NavArea> result = nullptr;
@@ -23,7 +23,7 @@ std::shared_ptr<NavArea> NavMesh::findNearestArea(const glm::vec3& pos) const
 	return result;
 }
 
-std::shared_ptr<NavArea> NavMesh::findExactArea(const glm::vec3& pos, float tolerance) const
+std::shared_ptr<NavArea> NavMesh::FindExactArea(const AreaSet& areas, const glm::vec3& pos, float tolerance)
 {
 	for (auto area : areas)
 	{
@@ -60,7 +60,8 @@ void AiClient::onFrame()
 	auto origin = getOrigin();
 	const auto& clientdata = getClientData();
 
-	GAME_STATS("areas", mNavMesh.areas.size());
+	GAME_STATS("explored areas", mNavMesh.explored_areas.size());
+	GAME_STATS("unexplored areas", mNavMesh.unexplored_areas.size());
 	GAME_STATS("origin", fmt::format("{:.0f} {:.0f} {:.0f}", origin.x, origin.y, origin.z));
 	GAME_STATS("flags", clientdata.flags);
 	GAME_STATS("maxspeed", fmt::format("{:.0f}", clientdata.maxspeed));
@@ -95,7 +96,8 @@ void AiClient::resetGameResources()
 	HL::PlayableClient::resetGameResources();
 
 	mNavChain.clear();
-	mNavMesh.areas.clear();
+	mNavMesh.explored_areas.clear();
+	mNavMesh.unexplored_areas.clear();
 	mCustomMoveTarget.reset();
 }
 
@@ -544,8 +546,8 @@ AiClient::MovementStatus AiClient::navMoveTo(HL::Protocol::UserCmd& cmd, const g
 
 	if (need_to_build_nav_chain)
 	{
-		auto src_area = mNavMesh.findNearestArea(getFootOrigin());
-		auto dst_area = mNavMesh.findNearestArea(target);
+		auto src_area = NavMesh::FindNearestArea(mNavMesh.explored_areas, getFootOrigin());
+		auto dst_area = NavMesh::FindNearestArea(mNavMesh.explored_areas, target);
 		mNavChain = buildNavChain(dst_area, src_area);
 		mNavChainTarget = target;
 		mNavChain.reverse();
@@ -592,7 +594,7 @@ AiClient::MovementStatus AiClient::moveToCustomTarget(HL::Protocol::UserCmd& cmd
 	if (!mCustomMoveTarget.has_value())
 		return MovementStatus::Finished;
 
-	if (mNavMesh.areas.empty())
+	if (mNavMesh.explored_areas.empty())
 		return MovementStatus::Processing;
 	
 	auto target = mCustomMoveTarget.value();
@@ -623,25 +625,38 @@ AiClient::MovementStatus AiClient::moveToCustomTarget(HL::Protocol::UserCmd& cmd
 
 AiClient::MovementStatus AiClient::exploreNewAreas(HL::Protocol::UserCmd& cmd)
 {
+	if (mNavMesh.unexplored_areas.empty())
+		return MovementStatus::Finished;
+
 	if (!mNavChain.empty())
 		return navMoveTo(cmd, mNavChainTarget);
 
-	for (auto area : mNavMesh.areas)
-	{
-		if (area->isExplored())
-			continue;
-
-		auto pos = area->position;
-		setCustomMoveTarget(pos);
-		HL::Utils::dlog("exploring {} {} {}", pos.x, pos.y, pos.z);
-		return MovementStatus::Processing;
-	}
-
-	return MovementStatus::Finished;
+	auto area = *mNavMesh.unexplored_areas.begin();
+	auto pos = area->position;
+	setCustomMoveTarget(pos);
+	HL::Utils::dlog("exploring {} {} {}", pos.x, pos.y, pos.z);
+	return MovementStatus::Processing;
 }
 
 AiClient::BuildNavMeshStatus AiClient::buildNavMesh()
 {
+	bool all_explored_areas_collected = false;
+
+	while (!all_explored_areas_collected)
+	{
+		all_explored_areas_collected = true;
+		for (auto area : mNavMesh.unexplored_areas)
+		{
+			if (!area->isExplored())
+				continue;
+
+			mNavMesh.explored_areas.insert(area);
+			mNavMesh.unexplored_areas.erase(area);
+			all_explored_areas_collected = false;
+			break;
+		}
+	}
+
 	auto origin = getOrigin();
 	origin.x = origin.x - glm::mod(origin.x, NavStep);
 	origin.y = origin.y - glm::mod(origin.y, NavStep);
@@ -656,13 +671,16 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh()
 
 AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_ground_point)
 {
-	auto base_area = mNavMesh.findExactArea(start_ground_point, mNavStep * 1.25f);
+	auto base_area = NavMesh::FindExactArea(mNavMesh.explored_areas, start_ground_point, mNavStep * 1.25f);
+
+	if (base_area == nullptr)
+		base_area = NavMesh::FindExactArea(mNavMesh.unexplored_areas, start_ground_point, mNavStep * 1.25f);
 
 	if (base_area == nullptr)
 	{
 		auto area = std::make_shared<NavArea>();
 		area->position = start_ground_point;
-		mNavMesh.areas.insert(area);
+		mNavMesh.unexplored_areas.insert(area);
 		return BuildNavMeshStatus::Processing;
 	}
 
@@ -744,7 +762,10 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(std::shared_ptr<NavArea> bas
 
 		auto dst_ground = getGroundFromOrigin(dst_pos).value();
 
-		auto neighbour = mNavMesh.findExactArea(dst_ground, 4.0f);
+		auto neighbour = NavMesh::FindExactArea(mNavMesh.explored_areas, dst_ground, 4.0f);
+
+		if (neighbour == nullptr)
+			neighbour = NavMesh::FindExactArea(mNavMesh.unexplored_areas, dst_ground, 4.0f);
 
 		auto opposite_dir = OppositeDirections.at(dir);
 
@@ -757,7 +778,7 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(std::shared_ptr<NavArea> bas
 
 		auto area = std::make_shared<NavArea>();
 		area->position = dst_ground;
-		mNavMesh.areas.insert(area);
+		mNavMesh.unexplored_areas.insert(area);
 
 		base_area->neighbours.insert({ dir, area });
 		area->neighbours.insert({ opposite_dir, base_area });

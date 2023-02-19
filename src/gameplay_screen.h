@@ -30,7 +30,7 @@ namespace XClient
 	private:
 		std::optional<std::pair<std::string, std::shared_ptr<HL::BspDraw>>> mBspDraw;
 		bool mDraw3dBsp = false;
-		bool mDraw2dNavmesh = true;
+		int mDraw2dNavmesh = 1;
 	};
 
 	class GameplayScreen : public Shared::SceneHelpers::StandardScreen
