@@ -6,6 +6,15 @@ using namespace XClient;
 GameplayViewNode::GameplayViewNode() : HL::GameplayViewNode(CLIENT)
 {
 	setTouchable(true);
+
+	CONSOLE->registerCVar("r_draw_3d_bsp", { "bool" }, CVAR_GETTER_BOOL(mDraw3dBsp), CVAR_SETTER_BOOL(mDraw3dBsp));
+	CONSOLE->registerCVar("r_draw_2d_navmesh", { "bool" }, CVAR_GETTER_BOOL(mDraw2dNavmesh), CVAR_SETTER_BOOL(mDraw2dNavmesh));
+}
+
+GameplayViewNode::~GameplayViewNode()
+{
+	CONSOLE->removeCVar("r_draw_3d_bsp");
+	CONSOLE->removeCVar("r_draw_2d_navmesh");
 }
 
 void GameplayViewNode::draw()
@@ -16,11 +25,6 @@ void GameplayViewNode::draw()
 		return;
 
 	draw3dView();
-
-	const auto& clientdata = CLIENT->getClientData();
-	STATS_INDICATE_GROUP("clientdata", "origin", fmt::format("{:.0f} {:.0f} {:.0f}", clientdata.origin.x, clientdata.origin.y, clientdata.origin.z));
-	STATS_INDICATE_GROUP("clientdata", "flags", clientdata.flags);
-	STATS_INDICATE_GROUP("clientdata", "maxspeed", fmt::format("{:.0f}", clientdata.maxspeed));
 }
 
 void GameplayViewNode::drawOnBackground(Scene::Node& holder)
@@ -173,6 +177,9 @@ void GameplayViewNode::drawNavMovement(Scene::Node& holder)
 
 void GameplayViewNode::draw3dView() 
 {
+	if (!mDraw3dBsp)
+		return;
+		
 	if (!mBspDraw.has_value() || mBspDraw.value().first != getShortMapName())
 		mBspDraw = { getShortMapName(), std::make_shared<HL::BspDraw>(CLIENT->getBsp()) };
 
@@ -254,6 +261,9 @@ void GameplayViewNode::draw3dNavMesh(std::shared_ptr<skygfx::RenderTarget> targe
 
 void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 {
+	if (!mDraw2dNavmesh)
+		return;
+
 	auto node = IMSCENE->spawn<HL::GenericDrawNode>(holder);
 	node->setStretch(1.0f);
 	node->setDrawCallback([this] {

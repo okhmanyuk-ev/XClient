@@ -55,6 +55,24 @@ AiClient::AiClient()
 	CONSOLE->registerCVar("ai_nav_step", { "float" }, CVAR_GETTER_FLOAT(mNavStep), CVAR_SETTER_FLOAT(mNavStep));
 }
 
+void AiClient::onFrame()
+{
+	auto origin = getOrigin();
+	const auto& clientdata = getClientData();
+
+	GAME_STATS("areas", mNavMesh.areas.size());
+	GAME_STATS("origin", fmt::format("{:.0f} {:.0f} {:.0f}", origin.x, origin.y, origin.z));
+	GAME_STATS("flags", clientdata.flags);
+	GAME_STATS("maxspeed", fmt::format("{:.0f}", clientdata.maxspeed));
+	GAME_STATS("alive", isAlive());
+	GAME_STATS("health", fmt::format("{:.0f}", getHealth()));
+	GAME_STATS("spectator", isSpectator());
+	GAME_STATS("on_ground", isOnGround());
+	GAME_STATS("ducking", isDucking());
+	GAME_STATS("speed", getSpeed());
+	GAME_STATS("deadflag", clientdata.deadflag);
+}
+
 void AiClient::initializeGameEngine()
 {
 	PlayableClient::initializeGameEngine();
@@ -149,6 +167,9 @@ void AiClient::synchronizeBspModel()
 
 void AiClient::movement(HL::Protocol::UserCmd& cmd)
 {
+	if (!isAlive())
+		return;
+		
 	buildNavMesh();
 
 	if (avoidOtherPlayers(cmd) == MovementStatus::Processing)
@@ -249,6 +270,20 @@ bool AiClient::isOnGround() const
 	return flags & FL_ONGROUND;
 }
 
+bool AiClient::isAlive() const
+{
+	return
+		!isSpectator() &&
+		(getHealth() > 0.0f) &&
+		(getClientData().deadflag == DEAD_NO);
+}
+
+bool AiClient::isSpectator() const
+{
+	auto flags = getClientData().flags;
+	return flags & FL_SPECTATOR;
+}
+
 bool AiClient::isOnLadder() const
 {
 	return false; // TODO
@@ -263,6 +298,11 @@ bool AiClient::isDucking() const
 bool AiClient::isTired() const
 {
 	return Clock::Now() - mLastAirTime <= Clock::FromSeconds(JumpCooldownSeconds);
+}
+
+float AiClient::getHealth() const
+{
+	return getClientData().health;
 }
 
 float AiClient::getCurrentHeight() const
@@ -667,8 +707,6 @@ AiClient::BuildNavMeshStatus AiClient::buildNavMesh(const glm::vec3& start_groun
 			open_list.push_front(neighbour_nn);
 		}
 	}
-
-	GAME_STATS("areas", mNavMesh.areas.size());
 
 	return skip ? BuildNavMeshStatus::Processing : BuildNavMeshStatus::Finished;
 }

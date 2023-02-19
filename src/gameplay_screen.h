@@ -11,6 +11,7 @@ namespace XClient
 	{
 	public:
 		GameplayViewNode();
+		~GameplayViewNode();
 
 	public:
 		void draw() override;
@@ -28,6 +29,8 @@ namespace XClient
 
 	private:
 		std::optional<std::pair<std::string, std::shared_ptr<HL::BspDraw>>> mBspDraw;
+		bool mDraw3dBsp = false;
+		bool mDraw2dNavmesh = true;
 	};
 
 	class GameplayScreen : public Shared::SceneHelpers::StandardScreen

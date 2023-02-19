@@ -67,6 +67,9 @@ public:
 	AiClient();
 
 public:
+	void onFrame() override;
+
+public:
 	glm::vec3 getOrigin() const;
 	glm::vec3 getAngles() const;
 
@@ -84,10 +87,13 @@ private:
 	bool isVisible(const glm::vec3& eye, const glm::vec3& target) const;
 	bool isVisible(const glm::vec3& target) const;
 	bool isVisible(const HL::Protocol::Entity& entity) const;
+	bool isAlive() const;
+	bool isSpectator() const;
 	bool isOnGround() const;
 	bool isOnLadder() const;
 	bool isDucking() const;
 	bool isTired() const;
+	float getHealth() const;
 	float getCurrentHeight() const;
 	float getCurrentEyeHeight() const;
 	float getSpeed() const;
