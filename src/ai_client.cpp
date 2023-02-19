@@ -68,8 +68,20 @@ AiClient::AiClient()
 		return false;
 	});
 
-	CONSOLE->registerCVar("ai_nav_explore_distance", { "float" }, CVAR_GETTER_FLOAT(mNavExploreDistance), CVAR_SETTER_FLOAT(mNavExploreDistance));
-	CONSOLE->registerCVar("ai_nav_step", { "float" }, CVAR_GETTER_FLOAT(mNavStep), CVAR_SETTER_FLOAT(mNavStep));
+	CONSOLE->registerCommand("nav_clear", "clear navmesh", [this](CON_ARGS){
+		mNavMesh.explored_areas.clear();
+		mNavMesh.unexplored_areas.clear();
+	});
+
+	CONSOLE->registerCVar("nav_explore_distance", { "float" }, CVAR_GETTER_FLOAT(mNavExploreDistance), CVAR_SETTER_FLOAT(mNavExploreDistance));
+	CONSOLE->registerCVar("nav_step", { "float" }, CVAR_GETTER_FLOAT(mNavStep), CVAR_SETTER_FLOAT(mNavStep));
+}
+
+AiClient::~AiClient()
+{
+	CONSOLE->removeCommand("nav_clear");
+	CONSOLE->removeCVar("nav_explore_distance");
+	CONSOLE->removeCVar("nav_step");
 }
 
 void AiClient::onFrame()

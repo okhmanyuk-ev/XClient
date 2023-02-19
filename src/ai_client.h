@@ -69,6 +69,7 @@ private:
 
 public:
 	AiClient();
+	~AiClient();
 
 public:
 	void onFrame() override;
