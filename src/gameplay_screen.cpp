@@ -290,10 +290,10 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 
 				auto model = getTransform();
 				model = glm::translate(model, { scr_pos, 0.0f });
-				model = glm::scale(model, { 2.0f, 2.0f, 1.0f });
+				model = glm::scale(model, { 3.0f, 3.0f, 0.5f });
 
 				GRAPHICS->pushModelMatrix(model);
-				GRAPHICS->drawCircle({ Graphics::Color::Lime, 1.0f });
+				GRAPHICS->drawCircleTexture({ Graphics::Color::Lime, 1.0f });
 				GRAPHICS->pop();
 			}
 		}
