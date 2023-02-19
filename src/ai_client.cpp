@@ -87,7 +87,7 @@ void AiClient::onFrame()
 	GAME_STATS("spectator", isSpectator());
 	GAME_STATS("on_ground", isOnGround());
 	GAME_STATS("ducking", isDucking());
-	GAME_STATS("speed", getSpeed());
+	GAME_STATS("speed", fmt::format("{:.0f}", getSpeed()));
 	GAME_STATS("deadflag", clientdata.deadflag);
 }
 
@@ -648,7 +648,7 @@ AiClient::MovementStatus AiClient::exploreNewAreas(HL::Protocol::UserCmd& cmd)
 	if (!mNavChain.empty())
 		return navMoveTo(cmd, mNavChainTarget);
 
-	auto area = *mNavMesh.unexplored_areas.begin();
+	auto area = NavMesh::FindNearestArea(mNavMesh.unexplored_areas, getFootOrigin());
 	auto pos = area->position;
 	setCustomMoveTarget(pos);
 	HL::Utils::dlog("exploring {} {} {}", pos.x, pos.y, pos.z);
