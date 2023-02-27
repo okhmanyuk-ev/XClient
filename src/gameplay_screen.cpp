@@ -257,7 +257,7 @@ void GameplayViewNode::draw3dNavMesh(std::shared_ptr<skygfx::RenderTarget> targe
 	
 	GRAPHICS->pop(5);
 	GRAPHICS->setBatching(prev_batching);
-}		
+}
 
 void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 {
@@ -274,17 +274,17 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 
 		if (mDraw2dNavmesh == 1)
 		{
-			NavMesh::AreaSet borders;
+			NavMesh::AreaSet border_areas;
 
 			for (auto area : nav.explored_areas)
 			{
 				if (!area->isBorder())
 					continue;
 
-				borders.insert(area);
+				border_areas.insert(area);
 			}
 
-			for (auto area : borders)
+			/*for (auto area : border_areas)
 			{
 				auto scr_pos = worldToScreen(area->position);
 
@@ -295,7 +295,76 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 				GRAPHICS->pushModelMatrix(model);
 				GRAPHICS->drawCircleTexture({ Graphics::Color::Lime, 1.0f });
 				GRAPHICS->pop();
+			}*/
+
+			if (border_areas.empty())
+				return;
+			
+			static auto builder = Graphics::MeshBuilder();
+			builder.begin();
+
+			std::function<void(std::shared_ptr<NavArea>)> recursiveBorderDraw = [&](std::shared_ptr<NavArea> area) {
+				border_areas.erase(area);
+
+				NavMesh::AreaSet targets;
+
+				for (auto [dir, neighbour] : area->neighbours)
+				{
+					if (!neighbour.has_value())
+						continue;
+
+					auto neighbour_nn = neighbour.value().lock();
+
+					targets.insert(neighbour_nn);
+				}
+
+				for (auto horz_dir : { NavDirection::Left, NavDirection::Right })
+				{
+					if (!area->neighbours.contains(horz_dir))
+						continue;
+					
+					if (!area->neighbours.at(horz_dir).has_value())
+						continue;
+
+					auto horz_neighbour_nn = area->neighbours.at(horz_dir).value().lock();
+
+					for (auto vert_dir : { NavDirection::Forward, NavDirection::Back })
+					{
+						if (!horz_neighbour_nn->neighbours.contains(vert_dir))
+							continue;
+
+						if (!horz_neighbour_nn->neighbours.at(vert_dir).has_value())
+							continue;
+
+						auto diagonal_neighbour_nn = horz_neighbour_nn->neighbours.at(vert_dir).value().lock();
+
+						targets.insert(diagonal_neighbour_nn);
+					}
+				}
+
+				for (auto target : targets)
+				{
+					if (!border_areas.contains(target))
+						continue;
+
+					builder.color({ Graphics::Color::Lime, 1.0f });
+					builder.vertex(worldToScreen(area->position));
+					builder.vertex(worldToScreen(target->position));
+					recursiveBorderDraw(target);
+				}
+			};
+
+			while (!border_areas.empty())
+			{
+				recursiveBorderDraw(*border_areas.begin());
 			}
+
+			auto [vertices, count] = builder.end();
+
+			if (count == 0)
+				return;
+
+			GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
 		}
 		else
 		{

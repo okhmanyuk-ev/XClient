@@ -17,6 +17,7 @@ struct NavArea
 	std::map<NavDirection, std::optional<std::weak_ptr<NavArea>>> neighbours;
 	bool isExplored() const;
 	bool isBorder() const;
+	bool isNeighbour(std::shared_ptr<NavArea> area) const;
 };
 
 struct NavMesh
