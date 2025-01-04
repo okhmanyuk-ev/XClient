@@ -47,7 +47,7 @@ void GameplayViewNode::drawTrivialMovement(Scene::Node& holder)
 	auto move_target = CLIENT->getCustomMoveTarget();
 
 	static std::optional<glm::vec3> end_pos;
-	
+
 	if (!move_target.has_value())
 	{
 		end_pos.reset();
@@ -57,11 +57,11 @@ void GameplayViewNode::drawTrivialMovement(Scene::Node& holder)
 	const auto dTime = FRAME->getTimeDelta();
 
 	auto start_pos = CLIENT->getClientData().origin;
-	
+
 	if (!end_pos.has_value())
 		end_pos = start_pos;
 
-	end_pos = Common::Helpers::SmoothValueAssign(end_pos.value(), move_target.value(), dTime);
+	end_pos = sky::ease_towards(end_pos.value(), move_target.value(), dTime);
 
 	end_pos.value().z = start_pos.z;
 
@@ -76,11 +76,11 @@ void GameplayViewNode::drawTrivialMovement(Scene::Node& holder)
 	auto node = IMSCENE->spawn<HL::GenericDrawNode>(holder);
 	node->setStretch(1.0f);
 	node->setDrawCallback([node, start_scr, mid_scr, end_scr] {
-		GRAPHICS->draw(skygfx::Topology::LineList, {
-			{ { start_scr, 0.0f }, { Graphics::Color::Lime, 1.0f } },
-			{ { mid_scr, 0.0f }, { Graphics::Color::Lime, 1.0f } },
-			{ { mid_scr, 0.0f }, { Graphics::Color::Red, 1.0f } },
-			{ { end_scr, 0.0f }, { Graphics::Color::Red, 1.0f } }
+		GRAPHICS->draw(nullptr, nullptr, skygfx::Topology::LineList, std::vector<skygfx::utils::Mesh::Vertex>{
+			{ .pos = { start_scr, 0.0f }, .color = { Graphics::Color::Lime, 1.0f } },
+			{ .pos = { mid_scr, 0.0f }, .color = { Graphics::Color::Lime, 1.0f } },
+			{ .pos = { mid_scr, 0.0f }, .color = { Graphics::Color::Red, 1.0f } },
+			{ .pos = { end_scr, 0.0f }, .color = { Graphics::Color::Red, 1.0f } }
 		});
 	});
 
@@ -110,7 +110,7 @@ void GameplayViewNode::drawNavMovement(Scene::Node& holder)
 	if (!end_pos.has_value())
 		end_pos = start_pos;
 
-	end_pos = Common::Helpers::SmoothValueAssign(end_pos.value(), move_target.value(), dTime);
+	end_pos = sky::ease_towards(end_pos.value(), move_target.value(), dTime);
 
 	auto end_scr = worldToScreen(end_pos.value());
 
@@ -120,52 +120,57 @@ void GameplayViewNode::drawNavMovement(Scene::Node& holder)
 		if (CLIENT->getState() != HL::BaseClient::State::GameStarted)
 			return;
 
-		static auto builder = Graphics::MeshBuilder();
-		builder.begin();
+		GRAPHICS->draw(nullptr, nullptr, skygfx::utils::MeshBuilder::Mode::Lines, [&](auto vertex) {
+			static std::vector<glm::vec3> g_chain;
 
-		static std::vector<glm::vec3> g_chain;
+			const auto& chain = CLIENT->getNavChain();
 
-		const auto& chain = CLIENT->getNavChain();
+			while (g_chain.size() < chain.size())
+				if (g_chain.empty())
+					g_chain.push_back(start_pos);
+				else
+					g_chain.push_back(g_chain.back());
 
-		while (g_chain.size() < chain.size())
-			if (g_chain.empty())
-				g_chain.push_back(start_pos);
-			else
-				g_chain.push_back(g_chain.back());
+			while (g_chain.size() > chain.size())
+				g_chain.pop_back();
 
-		while (g_chain.size() > chain.size())
-			g_chain.pop_back();
-
-		for (int i = 0; i < g_chain.size(); i++)
-		{
-			auto chain_area = *std::next(chain.begin(), i);
-			g_chain[i] = Common::Helpers::SmoothValueAssign(g_chain.at(i), chain_area->position, dTime);
-			//g_chain[i] = std::next(chain.begin(), i)->lock()->position;
-		}
-
-		std::optional<glm::vec3> prev_v;
-
-		for (auto pos : g_chain)
-		{
-			if (prev_v.has_value())
+			for (int i = 0; i < g_chain.size(); i++)
 			{
-				builder.color(Graphics::Color::Yellow);
-				builder.vertex(worldToScreen(prev_v.value()));
-				builder.vertex(worldToScreen(pos));
+				auto chain_area = *std::next(chain.begin(), i);
+				g_chain[i] = sky::ease_towards(g_chain.at(i), chain_area->position, dTime);
+				//g_chain[i] = std::next(chain.begin(), i)->lock()->position;
 			}
-			prev_v = pos;
-		}
 
-		if (!prev_v.has_value())
-			prev_v = start_pos;
+			std::optional<glm::vec3> prev_v;
 
-		builder.color(Graphics::Color::Yellow);
-		builder.vertex(worldToScreen(prev_v.value()));
-		builder.vertex(end_scr);
+			for (auto pos : g_chain)
+			{
+				if (prev_v.has_value())
+				{
+					vertex(skygfx::utils::Mesh::Vertex{
+						.pos = { worldToScreen(prev_v.value()), 0.0f },
+						.color = { Graphics::Color::Yellow, 1.0f }
+					});
+					vertex(skygfx::utils::Mesh::Vertex{
+						.pos = { worldToScreen(pos), 0.0f },
+						.color = { Graphics::Color::Yellow, 1.0f }
+					});
+				}
+				prev_v = pos;
+			}
 
-		auto [vertices, count] = builder.end();
+			if (!prev_v.has_value())
+				prev_v = start_pos;
 
-		GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
+			vertex(skygfx::utils::Mesh::Vertex{
+				.pos = { worldToScreen(prev_v.value()), 0.0f },
+				.color = { Graphics::Color::Yellow, 1.0f }
+			});
+			vertex(skygfx::utils::Mesh::Vertex{
+				.pos = { end_scr, 0.0f },
+				.color = { Graphics::Color::Yellow, 1.0f }
+			});
+		});
 	});
 
 	auto circle = IMSCENE->spawn<Scene::Circle>(holder);
@@ -175,88 +180,88 @@ void GameplayViewNode::drawNavMovement(Scene::Node& holder)
 	circle->setRadius(4.0f);
 }
 
-void GameplayViewNode::draw3dView() 
+void GameplayViewNode::draw3dView()
 {
-	if (!mDraw3dBsp)
-		return;
-		
-	if (!mBspDraw.has_value() || mBspDraw.value().first != getShortMapName())
-		mBspDraw = { getShortMapName(), std::make_shared<HL::BspDraw>(CLIENT->getBsp()) };
-
-	auto target = GRAPHICS->getRenderTarget("bsp_3d_view", 800, 600);
-	static auto pos = glm::vec3{};
-	pos = Common::Helpers::SmoothValueAssign(pos, CLIENT->getOrigin(), FRAME->getTimeDelta());
-	auto angles = CLIENT->getAngles();
-	mBspDraw.value().second->draw(target, pos, glm::radians(angles.x), glm::radians(angles.y));
-	draw3dNavMesh(target, pos, angles);
-
-	ImGui::Begin("3D View");
-	auto width = ImGui::GetContentRegionAvail().x;
-	Shared::SceneEditor::drawImage(target, std::nullopt, width);
-	ImGui::End();
+//	if (!mDraw3dBsp)
+//		return;
+//
+//	if (!mBspDraw.has_value() || mBspDraw.value().first != getShortMapName())
+//		mBspDraw = { getShortMapName(), std::make_shared<HL::BspDraw>(CLIENT->getBsp()) };
+//
+//	auto target = GRAPHICS->getRenderTarget("bsp_3d_view", 800, 600);
+//	static auto pos = glm::vec3{};
+//	pos = Common::Helpers::SmoothValueAssign(pos, CLIENT->getOrigin(), FRAME->getTimeDelta());
+//	auto angles = CLIENT->getAngles();
+//	mBspDraw.value().second->draw(target, pos, glm::radians(angles.x), glm::radians(angles.y));
+//	draw3dNavMesh(target, pos, angles);
+//
+//	ImGui::Begin("3D View");
+//	auto width = ImGui::GetContentRegionAvail().x;
+//	Shared::SceneEditor::drawImage(target, std::nullopt, width);
+//	ImGui::End();
 }
 
 void GameplayViewNode::draw3dNavMesh(std::shared_ptr<skygfx::RenderTarget> target, const glm::vec3& pos, const glm::vec3& angles)
 {
-	static auto camera = std::make_shared<Graphics::Camera3D>();
-	camera->setWorldUp({ 0.0f, 0.0f, 1.0f });
-	camera->setPosition(pos);
-	camera->setYaw(glm::radians(angles.x));
-	camera->setPitch(glm::radians(angles.y));
-	camera->onFrame();
-
-	auto view = camera->getViewMatrix();
-	auto projection = camera->getProjectionMatrix();
-	auto prev_batching = GRAPHICS->isBatching();
-
-	GRAPHICS->setBatching(false);
-	GRAPHICS->pushCleanState();
-	GRAPHICS->pushViewMatrix(view);
-	GRAPHICS->pushProjectionMatrix(projection);
-	GRAPHICS->pushRenderTarget(target);
-	GRAPHICS->pushDepthMode(skygfx::ComparisonFunc::Less);
-	
-	const auto& nav = CLIENT->getNavMesh();
-	
-	if (!nav.explored_areas.empty())
-	{
-		static auto builder = Graphics::MeshBuilder();
-		builder.begin();
-
-		for (auto area : nav.explored_areas)
-		{
-			auto v1 = area->position;
-			auto v2 = v1 + glm::vec3{ 0.0f, 0.0f, 8.0f };
-
-			builder.color(Graphics::Color::Blue);
-			builder.vertex(v1);
-			builder.vertex(v2);
-
-			for (auto dir : { NavDirection::Forward, NavDirection::Right })
-			{
-				if (!area->neighbours.contains(dir))
-					continue;
-
-				auto neighbour = area->neighbours.at(dir);
-
-				if (!neighbour.has_value())
-					continue;
-
-				auto v3 = neighbour.value().lock()->position + glm::vec3{ 0.0f, 0.0f, 8.0f };
-
-				builder.color(Graphics::Color::Yellow);
-				builder.vertex(v2);
-				builder.vertex(v3);
-			}
-		}
-
-		auto [vertices, count] = builder.end();
-
-		GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
-	}
-	
-	GRAPHICS->pop(5);
-	GRAPHICS->setBatching(prev_batching);
+//	static auto camera = std::make_shared<Graphics::Camera3D>();
+//	camera->setWorldUp({ 0.0f, 0.0f, 1.0f });
+//	camera->setPosition(pos);
+//	camera->setYaw(glm::radians(angles.x));
+//	camera->setPitch(glm::radians(angles.y));
+//	camera->onFrame();
+//
+//	auto view = camera->getViewMatrix();
+//	auto projection = camera->getProjectionMatrix();
+//	auto prev_batching = GRAPHICS->isBatching();
+//
+//	GRAPHICS->setBatching(false);
+//	GRAPHICS->pushCleanState();
+//	GRAPHICS->pushViewMatrix(view);
+//	GRAPHICS->pushProjectionMatrix(projection);
+//	GRAPHICS->pushRenderTarget(target);
+//	GRAPHICS->pushDepthMode(skygfx::ComparisonFunc::Less);
+//	
+//	const auto& nav = CLIENT->getNavMesh();
+//	
+//	if (!nav.explored_areas.empty())
+//	{
+//		static auto builder = Graphics::MeshBuilder();
+//		builder.begin();
+//
+//		for (auto area : nav.explored_areas)
+//		{
+//			auto v1 = area->position;
+//			auto v2 = v1 + glm::vec3{ 0.0f, 0.0f, 8.0f };
+//
+//			builder.color(Graphics::Color::Blue);
+//			builder.vertex(v1);
+//			builder.vertex(v2);
+//
+//			for (auto dir : { NavDirection::Forward, NavDirection::Right })
+//			{
+//				if (!area->neighbours.contains(dir))
+//					continue;
+//
+//				auto neighbour = area->neighbours.at(dir);
+//
+//				if (!neighbour.has_value())
+//					continue;
+//
+//				auto v3 = neighbour.value().lock()->position + glm::vec3{ 0.0f, 0.0f, 8.0f };
+//
+//				builder.color(Graphics::Color::Yellow);
+//				builder.vertex(v2);
+//				builder.vertex(v3);
+//			}
+//		}
+//
+//		auto [vertices, count] = builder.end();
+//
+//		GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
+//	}
+//	
+//	GRAPHICS->pop(5);
+//	GRAPHICS->setBatching(prev_batching);
 }
 
 void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
@@ -299,72 +304,69 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 
 			if (border_areas.empty())
 				return;
-			
-			static auto builder = Graphics::MeshBuilder();
-			builder.begin();
 
-			std::function<void(std::shared_ptr<NavArea>)> recursiveBorderDraw = [&](std::shared_ptr<NavArea> area) {
-				border_areas.erase(area);
+			GRAPHICS->draw(nullptr, nullptr, skygfx::utils::MeshBuilder::Mode::Lines, [&](auto vertex) {
+				std::function<void(std::shared_ptr<NavArea>)> recursiveBorderDraw = [&](std::shared_ptr<NavArea> area) {
+					border_areas.erase(area);
 
-				NavMesh::AreaSet targets;
+					NavMesh::AreaSet targets;
 
-				for (auto [dir, neighbour] : area->neighbours)
-				{
-					if (!neighbour.has_value())
-						continue;
-
-					auto neighbour_nn = neighbour.value().lock();
-
-					targets.insert(neighbour_nn);
-				}
-
-				for (auto horz_dir : { NavDirection::Left, NavDirection::Right })
-				{
-					if (!area->neighbours.contains(horz_dir))
-						continue;
-					
-					if (!area->neighbours.at(horz_dir).has_value())
-						continue;
-
-					auto horz_neighbour_nn = area->neighbours.at(horz_dir).value().lock();
-
-					for (auto vert_dir : { NavDirection::Forward, NavDirection::Back })
+					for (auto [dir, neighbour] : area->neighbours)
 					{
-						if (!horz_neighbour_nn->neighbours.contains(vert_dir))
+						if (!neighbour.has_value())
 							continue;
 
-						if (!horz_neighbour_nn->neighbours.at(vert_dir).has_value())
-							continue;
+						auto neighbour_nn = neighbour.value().lock();
 
-						auto diagonal_neighbour_nn = horz_neighbour_nn->neighbours.at(vert_dir).value().lock();
-
-						targets.insert(diagonal_neighbour_nn);
+						targets.insert(neighbour_nn);
 					}
-				}
 
-				for (auto target : targets)
+					for (auto horz_dir : { NavDirection::Left, NavDirection::Right })
+					{
+						if (!area->neighbours.contains(horz_dir))
+							continue;
+
+						if (!area->neighbours.at(horz_dir).has_value())
+							continue;
+
+						auto horz_neighbour_nn = area->neighbours.at(horz_dir).value().lock();
+
+						for (auto vert_dir : { NavDirection::Forward, NavDirection::Back })
+						{
+							if (!horz_neighbour_nn->neighbours.contains(vert_dir))
+								continue;
+
+							if (!horz_neighbour_nn->neighbours.at(vert_dir).has_value())
+								continue;
+
+							auto diagonal_neighbour_nn = horz_neighbour_nn->neighbours.at(vert_dir).value().lock();
+
+							targets.insert(diagonal_neighbour_nn);
+						}
+					}
+
+					for (auto target : targets)
+					{
+						if (!border_areas.contains(target))
+							continue;
+
+						vertex(skygfx::utils::Mesh::Vertex{
+							.pos = { worldToScreen(area->position), 0.0f },
+							.color = { Graphics::Color::Lime, 1.0f }
+						});
+						vertex(skygfx::utils::Mesh::Vertex{
+							.pos = { worldToScreen(target->position), 0.0f },
+							.color = { Graphics::Color::Lime, 1.0f }
+						});
+						recursiveBorderDraw(target);
+					}
+				};
+
+				while (!border_areas.empty())
 				{
-					if (!border_areas.contains(target))
-						continue;
-
-					builder.color({ Graphics::Color::Lime, 1.0f });
-					builder.vertex(worldToScreen(area->position));
-					builder.vertex(worldToScreen(target->position));
-					recursiveBorderDraw(target);
+					recursiveBorderDraw(*border_areas.begin());
 				}
-			};
-
-			while (!border_areas.empty())
-			{
-				recursiveBorderDraw(*border_areas.begin());
-			}
-
-			auto [vertices, count] = builder.end();
-
-			if (count == 0)
-				return;
-
-			GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
+			});
 		}
 		else
 		{
@@ -373,59 +375,59 @@ void GameplayViewNode::draw2dNavMesh(Scene::Node& holder)
 			if (areas.empty())
 				return;
 
-			static auto builder = Graphics::MeshBuilder();
-			builder.begin();
 
-			using NavAreaIndex = size_t;
+			GRAPHICS->draw(nullptr, nullptr, skygfx::utils::MeshBuilder::Mode::Lines, [&](auto vertex) {
+				using NavAreaIndex = size_t;
 
-			std::unordered_set<NavAreaIndex> blacklist;
+				std::unordered_set<NavAreaIndex> blacklist;
 
-			for (auto area : areas)
-			{
-				auto v1 = area->position;
-
-				auto area_index = reinterpret_cast<NavAreaIndex>(area.get());
-
-				blacklist.insert(area_index);
-
-				for (auto dir : Directions)
+				for (auto area : areas)
 				{
-					if (!area->neighbours.contains(dir))
-						continue;
+					auto v1 = area->position;
 
-					auto neighbour = area->neighbours.at(dir);
+					auto area_index = reinterpret_cast<NavAreaIndex>(area.get());
 
-					if (!neighbour.has_value())
-						continue;
+					blacklist.insert(area_index);
 
-					auto neighbour_nn = neighbour.value().lock();
-					auto neighbour_index = reinterpret_cast<NavAreaIndex>(neighbour_nn.get());
+					for (auto dir : Directions)
+					{
+						if (!area->neighbours.contains(dir))
+							continue;
 
-					if (blacklist.contains(neighbour_index))
-						continue;
+						auto neighbour = area->neighbours.at(dir);
 
-					auto opposite_dir = OppositeDirections.at(dir);
+						if (!neighbour.has_value())
+							continue;
 
-					if (!neighbour_nn->neighbours.contains(opposite_dir))
-						builder.color({ Graphics::Color::Red, 0.5f });
-					else if (!neighbour_nn->neighbours.at(opposite_dir).has_value())
-						builder.color({ Graphics::Color::Blue, 0.5f });
-					else
-						builder.color({ Graphics::Color::White, 0.5f });
+						auto neighbour_nn = neighbour.value().lock();
+						auto neighbour_index = reinterpret_cast<NavAreaIndex>(neighbour_nn.get());
 
-					auto v2 = neighbour_nn->position;
+						if (blacklist.contains(neighbour_index))
+							continue;
 
-					builder.vertex(worldToScreen(v1));
-					builder.vertex(worldToScreen(v2));
+						auto opposite_dir = OppositeDirections.at(dir);
+
+						glm::vec4 color;
+						if (!neighbour_nn->neighbours.contains(opposite_dir))
+							color = { Graphics::Color::Red, 0.5f };
+						else if (!neighbour_nn->neighbours.at(opposite_dir).has_value())
+							color = { Graphics::Color::Blue, 0.5f };
+						else
+							color = { Graphics::Color::White, 0.5f };
+
+						auto v2 = neighbour_nn->position;
+
+						vertex(skygfx::utils::Mesh::Vertex{
+							.pos = { worldToScreen(v1), 0.0f },
+							.color = color
+						});
+						vertex(skygfx::utils::Mesh::Vertex{
+							.pos = { worldToScreen(v2), 0.0f },
+							.color = color
+						});
+					}
 				}
-			}
-
-			auto [vertices, count] = builder.end();
-
-			if (count == 0)
-				return;
-
-			GRAPHICS->draw(skygfx::Topology::LineList, vertices, count);
+			});
 		}
 	});
 }
@@ -484,14 +486,14 @@ void GameplayScreen::draw()
 	{
 		auto gameplay_view = IMSCENE->spawn<GameplayViewNode>(*gameplay_holder);
 		gameplay_view->setStretch(1.0f);
-		IMSCENE->dontKillUntilHaveChilds();
+		IMSCENE->dontKillWhileHaveChilds();
 
 		{
 			auto checkbox = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::Checkbox>>(*gui_holder);
 			checkbox->setSize({ 96.0f, 24.0f });
 			checkbox->setAnchor({ 1.0f, 0.0f });
 			checkbox->setPosition({ -8.0f, 36.0f });
-			checkbox->getLabel()->setText("NAV");
+			checkbox->getLabel()->setText(L"NAV");
 			checkbox->getLabel()->setFontSize(10.0f);
 			checkbox->getOuterRectangle()->setRounding(0.5f);
 			checkbox->getInnerRectangle()->setRounding(0.5f);
@@ -500,7 +502,7 @@ void GameplayScreen::draw()
 				CLIENT->setUseNavMovement(checked);
 			});
 
-			if (IMSCENE->justAllocated())
+			if (IMSCENE->isFirstCall())
 				checkbox->setPivot({ 0.0f, 0.0f });
 			else
 				checkbox->setPivot({ 1.0f, 0.0f });
@@ -518,7 +520,7 @@ void GameplayScreen::draw()
 			checkbox->setSize({ 96.0f, 24.0f });
 			checkbox->setAnchor({ 1.0f, 0.0f });
 			checkbox->setPosition({ -8.0f, 64.0f });
-			checkbox->getLabel()->setText("CENTERIZED");
+			checkbox->getLabel()->setText(L"CENTERIZED");
 			checkbox->getLabel()->setFontSize(10.0f);
 			checkbox->getOuterRectangle()->setRounding(0.5f);
 			checkbox->getInnerRectangle()->setRounding(0.5f);
@@ -526,8 +528,8 @@ void GameplayScreen::draw()
 			checkbox->setChangeCallback([gameplay_view](bool checked) {
 				gameplay_view->setCenterized(checked);
 			});
-			
-			if (IMSCENE->justAllocated())
+
+			if (IMSCENE->isFirstCall())
 				checkbox->setPivot({ 0.0f, 0.0f });
 			else
 				checkbox->setPivot({ 1.0f, 0.0f });
@@ -543,7 +545,7 @@ void GameplayScreen::draw()
 	else if (state != HL::BaseClient::State::Disconnected && state != HL::BaseClient::State::GameStarted)
 	{
 		auto label = IMSCENE->spawn<Scene::Label>(*gameplay_holder);
-		label->setText("LOADING...");
+		label->setText(L"LOADING...");
 		label->setFontSize(32.0f);
 		label->setAnchor(0.5f);
 		label->setPivot(0.5f);
@@ -551,7 +553,7 @@ void GameplayScreen::draw()
 		LoadingLabel = label;
 
 		const auto& channel = CLIENT->getChannel();
-		
+
 		if (channel.has_value())
 		{
 			auto draw_progress_bar = [&](std::shared_ptr<HL::Channel::FragBuffer> fragbuf, float y) {
@@ -566,7 +568,7 @@ void GameplayScreen::draw()
 				}
 
 				auto progress = static_cast<float>(completed_count) / static_cast<float>(total_count);
-				
+
 				auto progressbar = IMSCENE->spawn<Scene::ClippableStencil<Shared::SceneHelpers::Progressbar>>(*gameplay_holder);
 				progressbar->setWidth(512.0f);
 				progressbar->setHeight(8.0f);
@@ -575,7 +577,7 @@ void GameplayScreen::draw()
 				progressbar->setY(y + 32.0f);
 				progressbar->setRounding(1.0f);
 				progressbar->setSlicedSpriteOptimizationEnabled(false); // this enable nice clipping
-				progressbar->setProgress(Common::Helpers::SmoothValueAssign(progressbar->getProgress(), progress, dTime));
+				progressbar->setProgress(sky::ease_towards(progressbar->getProgress(), progress, dTime));
 			};
 
 			float y = 0.0f;
@@ -602,19 +604,19 @@ void GameplayScreen::draw()
 		editbox->setPivot(0.5f);
 		editbox->setY(-24.0f);
 		IMSCENE->showAndHideWithScale();
-		if (IMSCENE->justAllocated())
+		if (IMSCENE->isFirstCall())
 		{
 		//	editbox->getLabel()->setText("192.168.0.106:27015");
-			editbox->getLabel()->setText("127.0.0.1:27015");
+			editbox->getLabel()->setText(L"127.0.0.1:27015");
 		}
 
 		auto button = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
-		if (IMSCENE->justAllocated())
+		if (IMSCENE->isFirstCall())
 		{
 			button->getLabel()->setFontSize(18.0f);
 		}
-		button->getLabel()->setText("CONNECT");
-		button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 18.0f, dTime));
+		button->getLabel()->setText(L"CONNECT");
+		button->getLabel()->setFontSize(sky::ease_towards(button->getLabel()->getFontSize(), 18.0f, dTime));
 		button->setSize({ 192.0f, 48.0f });
 		button->setAnchor(0.5f);
 		button->setPivot(0.5f);
@@ -624,14 +626,14 @@ void GameplayScreen::draw()
 			if (editbox.expired())
 				return;
 
-			CONSOLE->execute("connect " + editbox.lock()->getLabel()->getText().cpp_str());
+			CONSOLE->execute("connect " + sky::to_string(editbox.lock()->getLabel()->getText()));
 		});
 	}
 	else
 	{
 		auto button = IMSCENE->spawn<Shared::SceneHelpers::Smoother<Shared::SceneHelpers::BouncingButtonBehavior<Shared::SceneHelpers::RectangleButton>>>(*gui_holder);
-		button->getLabel()->setText("DISCONNECT");
-		button->getLabel()->setFontSize(Common::Helpers::SmoothValueAssign(button->getLabel()->getFontSize(), 10.0f, dTime));
+		button->getLabel()->setText(L"DISCONNECT");
+		button->getLabel()->setFontSize(sky::ease_towards(button->getLabel()->getFontSize(), 10.0f, dTime));
 		button->setSize({ 96.0f, 24.0f });
 		button->setAnchor({ 1.0f, 0.0f });
 		button->setPivot({ 1.0f, 0.0f });

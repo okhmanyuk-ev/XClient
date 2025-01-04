@@ -428,8 +428,8 @@ void AiClient::lookAt(HL::Protocol::UserCmd& cmd, const glm::vec3& target) const
 	viewangles.y = (float)glm::degrees(glm::atan(v.y, v.x));
 	viewangles.z = 0.0f;
 
-	cmd.viewangles.x = Common::Helpers::SmoothValueAssign(cmd.viewangles.x, viewangles.x, Clock::FromMilliseconds(cmd.msec));
-	cmd.viewangles.y = glm::degrees(Common::Helpers::SmoothRotationAssign(glm::radians(cmd.viewangles.y), glm::radians(viewangles.y), Clock::FromMilliseconds(cmd.msec)));
+	cmd.viewangles.x = sky::ease_towards(cmd.viewangles.x, viewangles.x, Clock::FromMilliseconds(cmd.msec));
+	cmd.viewangles.y = glm::degrees(sky::ease_rotation_towards(glm::radians(cmd.viewangles.y), glm::radians(viewangles.y), Clock::FromMilliseconds(cmd.msec)));
 	cmd.viewangles.z = 0.0f;
 }
 

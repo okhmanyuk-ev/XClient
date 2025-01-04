@@ -12,7 +12,7 @@ Application::Application() : Shared::Application(PROJECT_NAME, { Flag::Network, 
 	PLATFORM->resize(720, 360);
 #endif
 #if defined(PLATFORM_WINDOWS)
-	PLATFORM->rescale(1.5f);
+	//PLATFORM->rescale(1.5f);
 #endif
 
 	ImGui::User::SetupStyleFromColor(0.5, 1.0, 0.5);

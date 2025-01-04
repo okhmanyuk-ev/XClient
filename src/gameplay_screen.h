@@ -28,7 +28,7 @@ namespace XClient
 		void draw2dNavMesh(Scene::Node& holder);
 
 	private:
-		std::optional<std::pair<std::string, std::shared_ptr<HL::BspDraw>>> mBspDraw;
+		//std::optional<std::pair<std::string, std::shared_ptr<HL::BspDraw>>> mBspDraw;
 		bool mDraw3dBsp = false;
 		int mDraw2dNavmesh = 1;
 	};
